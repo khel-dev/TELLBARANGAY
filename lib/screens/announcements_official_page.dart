@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
+import '../services/data_service.dart';
 
 class AnnouncementsOfficialPage extends StatefulWidget {
   const AnnouncementsOfficialPage({Key? key}) : super(key: key);
@@ -10,98 +11,113 @@ class AnnouncementsOfficialPage extends StatefulWidget {
 }
 
 class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
-  final List<Map<String, String>> officialAnnouncements = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAnnouncements();
-  }
-
-  void _loadAnnouncements() {
-    // Load announcements from DataService (can be extended to use a separate AnnouncementService)
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
+    final announcements = DataService.instance.getAnnouncements();
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryOrange,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.white),
-          onPressed: () => Navigator.pop(context),
+      body: Container(
+        decoration: BoxDecoration(
+          color: AppColors.primaryOrange,
         ),
-        title: const Text(
-          'Manage Announcements',
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: AppColors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Manage Announcements',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${announcements.length} Total',
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Announcements list
+              Expanded(
+                child: announcements.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.campaign,
+                              size: 64,
+                              color: AppColors.white.withOpacity(0.3),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No announcements yet',
+                              style: TextStyle(
+                                color: AppColors.white.withOpacity(0.7),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tap the + button to post one',
+                              style: TextStyle(
+                                color: AppColors.white.withOpacity(0.6),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: announcements.length,
+                        itemBuilder: (context, index) {
+                          final announcement =
+                              announcements[announcements.length - 1 - index];
+                          return _buildAnnouncementCard(context, announcement);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showPostAnnouncementDialog(context),
+        backgroundColor: AppColors.primaryOrange,
+        icon: const Icon(Icons.add, color: AppColors.white),
+        label: const Text(
+          'Post Announcement',
           style: TextStyle(
             color: AppColors.white,
-            fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),
-        centerTitle: false,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showPostAnnouncementDialog(context),
-        backgroundColor: AppColors.primaryOrange,
-        child: const Icon(Icons.add, color: AppColors.white),
-      ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.paleOrange,
-                  AppColors.primaryOrange,
-                ],
-              ),
-            ),
-          ),
-          officialAnnouncements.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.announcement_outlined,
-                        size: 64,
-                        color: AppColors.white.withOpacity(0.3),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No announcements yet',
-                        style: TextStyle(
-                          color: AppColors.white.withOpacity(0.7),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tap the + button to post one',
-                        style: TextStyle(
-                          color: AppColors.white.withOpacity(0.6),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: officialAnnouncements.length,
-                  itemBuilder: (context, index) {
-                    final announcement =
-                        officialAnnouncements[officialAnnouncements.length - 1 - index];
-                    return _buildAnnouncementCard(context, announcement);
-                  },
-                ),
-        ],
       ),
     );
   }
@@ -136,7 +152,7 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -147,81 +163,82 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
                       child: Text(
                         announcement['title'] ?? 'Announcement',
                         style: const TextStyle(
-                          color: AppColors.primaryOrange,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     PopupMenuButton(
+                      icon: Icon(Icons.more_vert, color: Colors.grey[600]),
                       itemBuilder: (context) => [
                         PopupMenuItem(
                           child: const Row(
                             children: [
-                              Icon(Icons.edit, size: 16),
+                              Icon(Icons.edit, size: 18, color: Colors.blue),
                               SizedBox(width: 8),
                               Text('Edit'),
                             ],
                           ),
-                          onTap: () => _showEditAnnouncementDialog(context, announcement),
+                          onTap: () {
+                            Future.delayed(Duration.zero, () {
+                              _showEditAnnouncementDialog(context, announcement);
+                            });
+                          },
                         ),
                         PopupMenuItem(
                           child: const Row(
                             children: [
-                              Icon(Icons.delete, size: 16, color: AppColors.accentRed),
+                              Icon(Icons.delete, size: 18, color: Colors.red),
                               SizedBox(width: 8),
-                              Text('Delete', style: TextStyle(color: AppColors.accentRed)),
+                              Text('Delete', style: TextStyle(color: Colors.red)),
                             ],
                           ),
-                          onTap: () => _showDeleteConfirmation(context, announcement),
+                          onTap: () {
+                            Future.delayed(Duration.zero, () {
+                              _showDeleteConfirmation(context, announcement);
+                            });
+                          },
                         ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
-                  (announcement['description']?.length ?? 0) > 100
-                      ? '${announcement['description']!.substring(0, 100)}...'
-                      : announcement['description'] ?? '',
+                  announcement['description'] ?? '',
                   style: TextStyle(
-                    color: AppColors.darkGrey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                    fontSize: 14,
+                    height: 1.5,
                   ),
-                  maxLines: 3,
+                  maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.calendar_today,
-                          size: 12,
-                          color: AppColors.lightGrey,
-                        ),
-                        const SizedBox(width: 4),
+                        Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
+                        const SizedBox(width: 6),
                         Text(
                           _formatDate(announcement['date'] ?? ''),
                           style: TextStyle(
-                            color: AppColors.lightGrey,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[500],
+                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: AppColors.primaryOrange.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.primaryOrange, width: 1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
                         'Published',
@@ -249,7 +266,16 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Post New Announcement'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Post New Announcement',
+          style: TextStyle(
+            color: AppColors.primaryOrange,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -258,26 +284,30 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
                 controller: titleController,
                 decoration: InputDecoration(
                   labelText: 'Title',
+                  labelStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
                   fillColor: AppColors.lightGrey,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
+                  prefixIcon: const Icon(Icons.title, color: AppColors.primaryOrange),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextField(
                 controller: descriptionController,
                 maxLines: 5,
                 decoration: InputDecoration(
                   labelText: 'Description',
+                  labelStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
                   fillColor: AppColors.lightGrey,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
+                  prefixIcon: const Icon(Icons.description, color: AppColors.primaryOrange),
                 ),
               ),
             ],
@@ -286,34 +316,45 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
               if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all fields')),
+                  const SnackBar(
+                    content: Text('Please fill all fields'),
+                    backgroundColor: AppColors.accentRed,
+                  ),
                 );
                 return;
               }
-              setState(() {
-                officialAnnouncements.add({
-                  'title': titleController.text,
-                  'description': descriptionController.text,
-                  'date': DateTime.now().toIso8601String(),
-                  'icon': '📢',
-                });
-              });
+              DataService.instance.addAnnouncement(
+                titleController.text.trim(),
+                descriptionController.text.trim(),
+              );
               Navigator.pop(context);
+              setState(() {});
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Announcement posted'),
+                const SnackBar(
+                  content: Text('Announcement posted successfully'),
                   backgroundColor: AppColors.brightGreen,
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-            child: const Text('Post', style: TextStyle(color: AppColors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryOrange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Post',
+              style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -329,7 +370,16 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Announcement'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Edit Announcement',
+          style: TextStyle(
+            color: AppColors.primaryOrange,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -338,26 +388,30 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
                 controller: titleController,
                 decoration: InputDecoration(
                   labelText: 'Title',
+                  labelStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
                   fillColor: AppColors.lightGrey,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
+                  prefixIcon: const Icon(Icons.title, color: AppColors.primaryOrange),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextField(
                 controller: descriptionController,
                 maxLines: 5,
                 decoration: InputDecoration(
                   labelText: 'Description',
+                  labelStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
                   fillColor: AppColors.lightGrey,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
+                  prefixIcon: const Icon(Icons.description, color: AppColors.primaryOrange),
                 ),
               ),
             ],
@@ -366,24 +420,46 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() {
-                announcement['title'] = titleController.text;
-                announcement['description'] = descriptionController.text;
-              });
+              if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill all fields'),
+                    backgroundColor: AppColors.accentRed,
+                  ),
+                );
+                return;
+              }
+              DataService.instance.updateAnnouncement(
+                announcement['id'] ?? '',
+                titleController.text.trim(),
+                descriptionController.text.trim(),
+              );
               Navigator.pop(context);
+              setState(() {});
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Announcement updated'),
+                const SnackBar(
+                  content: Text('Announcement updated successfully'),
                   backgroundColor: AppColors.brightGreen,
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-            child: const Text('Update', style: TextStyle(color: AppColors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryOrange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Update',
+              style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -395,28 +471,47 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Announcement'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Delete Announcement',
+          style: TextStyle(
+            color: AppColors.primaryOrange,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: const Text('Are you sure you want to delete this announcement?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() {
-                officialAnnouncements.remove(announcement);
-              });
+              DataService.instance.deleteAnnouncement(announcement['id'] ?? '');
               Navigator.pop(context);
+              setState(() {});
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Announcement deleted'),
+                const SnackBar(
+                  content: Text('Announcement deleted'),
                   backgroundColor: AppColors.accentRed,
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentRed),
-            child: const Text('Delete', style: TextStyle(color: AppColors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentRed,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -427,6 +522,13 @@ class _AnnouncementsOfficialPageState extends State<AnnouncementsOfficialPage> {
     if (isoDate.isEmpty) return 'Unknown date';
     try {
       final date = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inMinutes < 1) return 'Just now';
+      if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+      if (difference.inHours < 24) return '${difference.inHours}h ago';
+      if (difference.inDays < 7) return '${difference.inDays}d ago';
       return '${date.day}/${date.month}/${date.year}';
     } catch (e) {
       return 'Unknown date';

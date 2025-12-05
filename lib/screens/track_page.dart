@@ -251,13 +251,13 @@ class _TrackPageState extends State<TrackPage>
                               Icon(
                                 Icons.calendar_today,
                                 size: 13,
-                                color: AppColors.lightGrey,
+                                color: Colors.black87,
                               ),
                               const SizedBox(width: 6),
                               Text(
                                 _formatDate(item['date'] ?? ''),
-                                style: TextStyle(
-                                  color: AppColors.lightGrey,
+                                style: const TextStyle(
+                                  color: Colors.black87,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -329,6 +329,7 @@ class _TrackPageState extends State<TrackPage>
   void _showRequestDetails(BuildContext context, Map<String, String> request) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
@@ -344,57 +345,58 @@ class _TrackPageState extends State<TrackPage>
           ),
         ),
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  request['type'] ?? 'Request Details',
-                  style: const TextStyle(
-                    color: AppColors.primaryOrange,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    request['type'] ?? 'Request Details',
+                    style: const TextStyle(
+                      color: AppColors.primaryOrange,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: AppColors.darkGrey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _buildDetailField('Request ID', request['id'] ?? 'N/A'),
-            _buildDetailField('Full Name', request['fullName'] ?? 'N/A'),
-            _buildDetailField('Type', request['type'] ?? 'N/A'),
-            _buildDetailField('Purpose', request['purpose'] ?? 'N/A'),
-            _buildDetailField('Status', request['status'] ?? 'N/A'),
-            _buildDetailField('Submitted', _formatDate(request['date'] ?? '')),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryOrange,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.close, color: AppColors.darkGrey),
                   ),
-                ),
-                child: const Text(
-                  'Close',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildDetailField('Request ID', request['id'] ?? 'N/A'),
+              _buildDetailField('Full Name', request['fullName'] ?? 'N/A'),
+              _buildDetailField('Type', request['type'] ?? 'N/A'),
+              _buildDetailField('Purpose', request['purpose'] ?? 'N/A'),
+              _buildDetailField('Status', request['status'] ?? 'N/A'),
+              _buildDetailField('Submitted', _formatDate(request['date'] ?? '')),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryOrange,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

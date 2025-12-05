@@ -49,27 +49,37 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       body: Stack(
         children: [
+          // Orange Background
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.paleOrange,
-                  AppColors.primaryOrange,
-                ],
-              ),
+              color: AppColors.primaryOrange,
             ),
           ),
 
+          // Top-left curved shape (lighter orange/peach)
           Positioned(
-            right: -60,
+            top: -100,
+            left: -100,
             child: Container(
               width: 300,
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.darkOrange.withOpacity(0.5),
+                color: AppColors.paleOrange.withOpacity(0.5),
+              ),
+            ),
+          ),
+
+          // Bottom-right curved shape (lighter orange/peach)
+          Positioned(
+            bottom: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.paleOrange.withOpacity(0.5),
               ),
             ),
           ),
@@ -79,71 +89,44 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 40),
 
-                // Logo Circle with House Icon
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.white,
-                      width: 3,
-                    ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 75,
-                      height: 75,
+                // TellBarangay Logo
+                Image.asset(
+                  'assets/images/TELLBARANGAY_LOGO.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 120,
+                      height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.white,
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(
-                              Icons.home,
-                              color: AppColors.primaryOrange,
-                              size: 35,
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Tell',
-                              style: TextStyle(
-                                color: AppColors.primaryOrange,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Barangay',
-                              style: TextStyle(
-                                color: AppColors.primaryOrange,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        border: Border.all(
+                          color: AppColors.primaryOrange,
+                          width: 3,
                         ),
                       ),
-                    ),
-                  ),
+                      child: Icon(Icons.home, color: AppColors.primaryOrange, size: 50),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 20),
 
+                // Main Title
                 const Text(
                   'TellBarangay',
                   style: TextStyle(
                     color: AppColors.white,
-                    fontSize: 28,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
 
                 const SizedBox(height: 6),
 
+                // Subtitle
                 const Text(
                   'Login to continue',
                   style: TextStyle(
@@ -164,8 +147,8 @@ class _LoginPageState extends State<LoginPage> {
                         'Login',
                         style: TextStyle(
                           color: AppColors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
 
@@ -188,7 +171,7 @@ class _LoginPageState extends State<LoginPage> {
                           filled: true,
                           fillColor: AppColors.white,
                           prefixIcon: const Icon(Icons.email, color: AppColors.primaryOrange),
-                          hintText: 'Enter your email',
+                          hintText: 'Enter your email or username',
                           hintStyle: TextStyle(color: Colors.grey[400]),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -247,6 +230,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 14),
 
+                      // Keep me logged in checkbox
                       Row(
                         children: [
                           Checkbox(
@@ -276,6 +260,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 28),
 
+                      // Login Button (Darker orange/brown)
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -312,6 +297,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 10),
 
+                      // Go to Registration Button (White with orange border, blue text)
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -321,6 +307,10 @@ class _LoginPageState extends State<LoginPage> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.white,
+                            side: const BorderSide(
+                              color: AppColors.primaryOrange,
+                              width: 1,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -328,7 +318,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: const Text(
                             'Go to Registration',
                             style: TextStyle(
-                              color: AppColors.primaryOrange,
+                              color: AppColors.brightBlue,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),

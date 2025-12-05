@@ -24,46 +24,40 @@ class AnalyticsOfficialPage extends StatelessWidget {
     final requestApprovalRate = totalRequests == 0 ? 0 : ((approvedRequests / totalRequests) * 100).toInt();
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryOrange,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Dashboard Analytics',
-          style: TextStyle(
-            color: AppColors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: false,
-      ),
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.primaryOrange, AppColors.darkOrange],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+          color: AppColors.primaryOrange,
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Reports Summary
-                Text(
-                  'Reports Summary',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                // Header
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: AppColors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Dashboard Analytics',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+
+                const SizedBox(height: 20),
+
+                // Reports Summary
+                _SectionHeader(title: 'Reports Summary', icon: Icons.report_problem),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -72,7 +66,7 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'Total Reports',
                         value: '$totalReports',
                         icon: Icons.report_problem,
-                        color: AppColors.accentRed,
+                        color: Colors.red,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -81,7 +75,7 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'Resolved',
                         value: '$solvedReports',
                         icon: Icons.check_circle,
-                        color: AppColors.brightGreen,
+                        color: Colors.green,
                       ),
                     ),
                   ],
@@ -94,7 +88,7 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'Pending',
                         value: '$pendingReports',
                         icon: Icons.pending_actions,
-                        color: AppColors.accentRed,
+                        color: Colors.orange,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -103,21 +97,16 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'In Progress',
                         value: '$inProgressReports',
                         icon: Icons.hourglass_top,
-                        color: AppColors.brightBlue,
+                        color: Colors.lightBlue,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 24),
+
                 // Requests Summary
-                Text(
-                  'Requests Summary',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                _SectionHeader(title: 'Requests Summary', icon: Icons.assignment),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -126,7 +115,7 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'Total Requests',
                         value: '$totalRequests',
                         icon: Icons.assignment,
-                        color: AppColors.brightBlue,
+                        color: Colors.blue,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -135,7 +124,7 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'Approved',
                         value: '$approvedRequests',
                         icon: Icons.thumb_up,
-                        color: AppColors.brightGreen,
+                        color: Colors.green,
                       ),
                     ),
                   ],
@@ -148,7 +137,7 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'Pending',
                         value: '$pendingRequests',
                         icon: Icons.pending_actions,
-                        color: AppColors.accentRed,
+                        color: Colors.orange,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -157,67 +146,58 @@ class AnalyticsOfficialPage extends StatelessWidget {
                         title: 'Rejected',
                         value: '$rejectedRequests',
                         icon: Icons.thumb_down,
-                        color: AppColors.accentRed,
+                        color: Colors.red,
                       ),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 24),
+
                 // Performance Metrics
-                Text(
-                  'Performance Metrics',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                _SectionHeader(title: 'Performance Metrics', icon: Icons.trending_up),
                 const SizedBox(height: 12),
                 _PerformanceCard(
                   title: 'Report Resolution Rate',
                   percentage: reportResolutionRate,
                   description: '$solvedReports out of $totalReports reports resolved',
-                  color: AppColors.brightGreen,
+                  color: Colors.green,
                 ),
                 const SizedBox(height: 12),
                 _PerformanceCard(
                   title: 'Request Approval Rate',
                   percentage: requestApprovalRate,
                   description: '$approvedRequests out of $totalRequests requests approved',
-                  color: AppColors.brightBlue,
+                  color: Colors.blue,
                 ),
+
                 const SizedBox(height: 24),
+
                 // Key Insights
-                Text(
-                  'Key Insights',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                _SectionHeader(title: 'Key Insights', icon: Icons.lightbulb),
                 const SizedBox(height: 12),
                 _InsightBox(
                   icon: Icons.trending_up,
                   title: 'Most Common Report Type',
                   subtitle: _getMostCommonReportType(reports),
-                  color: AppColors.brightGreen,
+                  color: Colors.green,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _InsightBox(
                   icon: Icons.assessment,
                   title: 'System Status',
-                  subtitle: totalReports > 0 ? 'Active' : 'No activity yet',
-                  color: AppColors.brightBlue,
+                  subtitle: totalReports > 0 || totalRequests > 0 ? 'Active' : 'No activity yet',
+                  color: Colors.blue,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _InsightBox(
                   icon: Icons.people,
                   title: 'Community Engagement',
                   subtitle: '${totalReports + totalRequests} total submissions',
                   color: AppColors.primaryOrange,
                 ),
-                const SizedBox(height: 24),
+
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -233,9 +213,45 @@ class AnalyticsOfficialPage extends StatelessWidget {
       final category = report['category'] ?? 'Other';
       categories[category] = (categories[category] ?? 0) + 1;
     }
+    if (categories.isEmpty) return 'N/A';
     final maxCategory =
         categories.entries.reduce((a, b) => a.value > b.value ? a : b);
     return maxCategory.key;
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+
+  const _SectionHeader({
+    required this.title,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: AppColors.white, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -258,12 +274,12 @@ class _StatBox extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -273,23 +289,30 @@ class _StatBox extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: color, size: 24),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
               Text(
                 value,
                 style: TextStyle(
                   color: color,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             title,
             style: TextStyle(
-              color: AppColors.darkGrey,
-              fontSize: 12,
+              color: Colors.grey[600],
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -315,61 +338,65 @@ class _PerformanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.primaryOrange,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: percentage / 100,
-                    minHeight: 8,
-                    backgroundColor: AppColors.lightGrey,
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
               Text(
-                '$percentage%',
-                style: TextStyle(
-                  color: color,
+                title,
+                style: const TextStyle(
+                  color: Colors.black87,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$percentage%',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: percentage / 100,
+              minHeight: 12,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(
             description,
             style: TextStyle(
-              color: AppColors.darkGrey,
-              fontSize: 12,
+              color: Colors.grey[600],
+              fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -395,29 +422,29 @@ class _InsightBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 24),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -425,16 +452,17 @@ class _InsightBox extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: AppColors.primaryOrange,
-                    fontSize: 13,
+                    color: Colors.black87,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: AppColors.darkGrey,
-                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

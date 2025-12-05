@@ -9,6 +9,12 @@ class DataService {
   // Store submitted requests
   final List<Map<String, String>> _requests = [];
 
+  // Store announcements
+  final List<Map<String, String>> _announcements = [];
+
+  // Store notifications for citizens
+  final List<Map<String, String>> _notifications = [];
+
   // Submit a new report
   void submitReport(String category, String description, String fullName) {
     _reports.add({
@@ -45,6 +51,20 @@ class DataService {
     for (var report in _reports) {
       if (report['id'] == id) {
         report['status'] = status;
+        // Create notification for citizen
+        String message = 'Your report: "${report['category']}" is now $status. ';
+        if (status == 'In Progress') {
+          message += 'The barangay office is working on your concern.';
+        } else if (status == 'Solved') {
+          message += 'Your report has been resolved. Thank you for bringing this to our attention.';
+        }
+        _notifications.add({
+          'id': 'NOT-${DateTime.now().millisecondsSinceEpoch}',
+          'message': message,
+          'reportId': id,
+          'type': 'report_update',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
         break;
       }
     }
@@ -55,6 +75,22 @@ class DataService {
     for (var request in _requests) {
       if (request['id'] == id) {
         request['status'] = status;
+        // Create notification for citizen
+        String message = 'Your request for "${request['type']}" has been $status. ';
+        if (status == 'Approved') {
+          message += 'Great news! Your request has been approved. You can now claim your certificate at the barangay hall during office hours.';
+        } else if (status == 'Rejected') {
+          message += 'Your request could not be approved at this time. Please visit the barangay hall for more information.';
+        } else if (status == 'Pending') {
+          message += 'Your request is being processed by the barangay office.';
+        }
+        _notifications.add({
+          'id': 'NOT-${DateTime.now().millisecondsSinceEpoch}',
+          'message': message,
+          'requestId': id,
+          'type': 'request_update',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
         break;
       }
     }
@@ -110,5 +146,47 @@ class DataService {
         break;
       }
     }
+  }
+
+  // Add announcement
+  void addAnnouncement(String title, String description) {
+    _announcements.add({
+      'id': 'ANN-${DateTime.now().millisecondsSinceEpoch}',
+      'title': title,
+      'description': description,
+      'date': DateTime.now().toIso8601String(),
+    });
+  }
+
+  // Get all announcements
+  List<Map<String, String>> getAnnouncements() => List.from(_announcements);
+
+  // Update announcement
+  void updateAnnouncement(String id, String title, String description) {
+    for (var announcement in _announcements) {
+      if (announcement['id'] == id) {
+        announcement['title'] = title;
+        announcement['description'] = description;
+        break;
+      }
+    }
+  }
+
+  // Delete announcement
+  void deleteAnnouncement(String id) {
+    _announcements.removeWhere((a) => a['id'] == id);
+  }
+
+  // Get all notifications
+  List<Map<String, String>> getNotifications() => List.from(_notifications);
+
+  // Clear all notifications
+  void clearNotifications() {
+    _notifications.clear();
+  }
+
+  // Delete single notification
+  void deleteNotification(String id) {
+    _notifications.removeWhere((n) => n['id'] == id);
   }
 }

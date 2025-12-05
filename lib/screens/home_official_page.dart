@@ -17,197 +17,316 @@ class HomeOfficialPage extends StatelessWidget {
     final requests = DataService.instance.getRequests();
     final pendingReports = reports.where((r) => r['status'] == 'Pending').length;
     final pendingRequests = requests.where((r) => r['status'] == 'Pending').length;
+    final inProgressReports = reports.where((r) => r['status'] == 'In Progress').length;
+    final solvedReports = reports.where((r) => r['status'] == 'Solved').length;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryOrange,
-        elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Text(
-                  '👮',
-                  style: TextStyle(fontSize: 20),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Official Dashboard',
-              style: TextStyle(
-                color: AppColors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline, color: AppColors.white),
-            onPressed: () => Navigator.pushNamed(context, '/profile'),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.primaryOrange, AppColors.darkOrange],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+          color: AppColors.primaryOrange,
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Welcome Card
+                // Header Section - Light orange card
                 Container(
-                  width: double.infinity,
+                  margin: const EdgeInsets.all(20),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.paleOrange,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                  ),
+                  child: Row(
+                    children: [
+                      // Logo on left
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.white,
+                          border: Border.all(
+                            color: AppColors.primaryOrange,
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Image.asset(
+                            'assets/images/TELLBARANGAY_LOGO.png',
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(Icons.admin_panel_settings, color: AppColors.primaryOrange, size: 28);
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Greeting and name in center
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, Official!',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              displayName,
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (user?['position'] != null && user!['position']!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                user['position']!,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      // Profile icon on right
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/profile'),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey[300],
+                          ),
+                          child: Icon(Icons.person, color: Colors.grey[600], size: 24),
+                        ),
                       ),
                     ],
                   ),
+                ),
+
+                // Quick Stats Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Welcome, $displayName',
-                        style: const TextStyle(
-                          color: AppColors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                      const Text(
+                        'Quick Stats',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Manage citizen concerns and barangay operations',
-                        style: TextStyle(
-                          color: AppColors.white.withOpacity(0.85),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Pending Reports',
+                              count: pendingReports,
+                              icon: Icons.report_problem,
+                              color: Colors.red,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Pending Requests',
+                              count: pendingRequests,
+                              icon: Icons.assignment,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              title: 'In Progress',
+                              count: inProgressReports,
+                              icon: Icons.hourglass_top,
+                              color: Colors.lightBlue,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Solved',
+                              count: solvedReports,
+                              icon: Icons.check_circle,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 20),
 
-                // Quick Stats
-                Text(
-                  'Quick Stats',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Pending Reports',
-                        count: pendingReports,
-                        icon: Icons.report_problem,
-                        color: AppColors.accentRed,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Pending Requests',
-                        count: pendingRequests,
-                        icon: Icons.assignment,
-                        color: AppColors.brightBlue,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Total Reports',
-                        count: reports.length,
-                        icon: Icons.check_circle,
-                        color: AppColors.brightGreen,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Quick Actions
-                Text(
-                  'Quick Actions',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.2,
+                // Quick Actions Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ActionTile(
-                        title: 'Received Reports',
-                        description: 'View & resolve citizen reports',
-                        icon: Icons.report_problem,
-                        color: const Color(0xFFFFE0E0),
-                        onTap: () => Navigator.pushNamed(context, '/official-reports'),
+                      const Text(
+                        'Quick Actions',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      _ActionTile(
-                        title: 'Requests to Process',
-                        description: 'Approve or reject requests',
-                        icon: Icons.assignment_turned_in,
-                        color: const Color(0xFFE3F2FD),
-                        onTap: () => Navigator.pushNamed(context, '/official-requests'),
-                      ),
-                      _ActionTile(
-                        title: 'Post Announcements',
-                        description: 'Share barangay updates',
-                        icon: Icons.announcement,
-                        color: const Color(0xFFFFF3E0),
-                        onTap: () => Navigator.pushNamed(context, '/official-announcements'),
-                      ),
-                      _ActionTile(
-                        title: 'Analytics',
-                        description: 'View dashboard stats',
-                        icon: Icons.bar_chart,
-                        color: const Color(0xFFF3E5F5),
-                        onTap: () => Navigator.pushNamed(context, '/official-analytics'),
+                      const SizedBox(height: 12),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1.1,
+                        children: [
+                          _ActionCard(
+                            title: 'Received Reports',
+                            description: 'View & resolve citizen reports',
+                            icon: Icons.report_problem,
+                            iconColor: Colors.red,
+                            onTap: () => Navigator.pushNamed(context, '/official-reports'),
+                            badgeCount: pendingReports > 0 ? pendingReports : null,
+                          ),
+                          _ActionCard(
+                            title: 'Requests to Process',
+                            description: 'Approve or reject requests',
+                            icon: Icons.assignment_turned_in,
+                            iconColor: Colors.blue,
+                            onTap: () => Navigator.pushNamed(context, '/official-requests'),
+                            badgeCount: pendingRequests > 0 ? pendingRequests : null,
+                          ),
+                          _ActionCard(
+                            title: 'Post Announcements',
+                            description: 'Share barangay updates',
+                            icon: Icons.campaign,
+                            iconColor: Colors.purple,
+                            onTap: () => Navigator.pushNamed(context, '/official-announcements'),
+                          ),
+                          _ActionCard(
+                            title: 'Analytics',
+                            description: 'View dashboard stats',
+                            icon: Icons.bar_chart,
+                            iconColor: Colors.orange,
+                            onTap: () => Navigator.pushNamed(context, '/official-analytics'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+
+                const SizedBox(height: 20),
+
+                // Recent Activity Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Recent Activity',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (reports.isEmpty && requests.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No recent activity',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else ...[
+                        if (reports.isNotEmpty)
+                          _ActivityCard(
+                            title: reports.last['category'] ?? 'Report',
+                            subtitle: 'From ${reports.last['fullName'] ?? 'Citizen'}',
+                            timestamp: _formatTime(reports.last['date'] ?? ''),
+                            status: reports.last['status'] ?? 'Pending',
+                            type: 'report',
+                          ),
+                        if (requests.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          _ActivityCard(
+                            title: requests.last['type'] ?? 'Request',
+                            subtitle: 'From ${requests.last['fullName'] ?? 'Citizen'}',
+                            timestamp: _formatTime(requests.last['date'] ?? ''),
+                            status: requests.last['status'] ?? 'Pending',
+                            type: 'request',
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  String _formatTime(String isoDate) {
+    if (isoDate.isEmpty) return 'Just now';
+    try {
+      final date = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inMinutes < 1) return 'Just now';
+      if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+      if (difference.inHours < 24) return '${difference.inHours}h ago';
+      if (difference.inDays < 7) return '${difference.inDays}d ago';
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return 'Just now';
+    }
   }
 }
 
@@ -227,37 +346,48 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              Text(
+                '$count',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Text(
-            '$count',
-            style: TextStyle(
-              color: color,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
             title,
-            textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppColors.darkGrey,
-              fontSize: 10,
+              color: Colors.grey[600],
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
             maxLines: 2,
@@ -269,19 +399,21 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _ActionTile extends StatelessWidget {
+class _ActionCard extends StatelessWidget {
   final String title;
   final String description;
   final IconData icon;
-  final Color color;
+  final Color iconColor;
   final VoidCallback onTap;
+  final int? badgeCount;
 
-  const _ActionTile({
+  const _ActionCard({
     required this.title,
     required this.description,
     required this.icon,
-    required this.color,
+    required this.iconColor,
     required this.onTap,
+    this.badgeCount,
   });
 
   @override
@@ -291,41 +423,185 @@ class _ActionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color,
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Icon(icon, color: AppColors.primaryOrange, size: 32),
-            const Spacer(),
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.primaryOrange,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 28),
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 11,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: TextStyle(
-                color: AppColors.primaryOrange.withOpacity(0.7),
-                fontSize: 11,
+            if (badgeCount != null && badgeCount! > 0)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 20,
+                    minHeight: 20,
+                  ),
+                  child: Center(
+                    child: Text(
+                      badgeCount! > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ActivityCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String timestamp;
+  final String status;
+  final String type;
+
+  const _ActivityCard({
+    required this.title,
+    required this.subtitle,
+    required this.timestamp,
+    required this.status,
+    required this.type,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color statusColor = status == 'Pending'
+        ? Colors.orange
+        : status == 'In Progress' || status == 'Approved'
+            ? Colors.lightBlue
+            : status == 'Solved'
+                ? Colors.green
+                : Colors.red;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: type == 'report' ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              type == 'report' ? Icons.report_problem : Icons.assignment,
+              color: type == 'report' ? Colors.red : Colors.blue,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  timestamp,
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

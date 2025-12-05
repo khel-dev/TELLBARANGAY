@@ -10,7 +10,14 @@ class AuthService {
 
   /// Register a user. Returns true on success. Username and email must be unique.
   /// role: 'citizen' or 'official'
-  bool register(String email, String username, String password, String displayName, {String role = 'citizen'}) {
+  bool register(String email, String username, String password, String displayName, {
+    String role = 'citizen',
+    String? address,
+    String? contact,
+    String? barangay,
+    String? age,
+    String? position,
+  }) {
     if (email.isEmpty || username.isEmpty || password.length < 6) return false;
     if (_users.containsKey(email)) return false;
     if (_usernameToEmail.containsKey(username)) return false;
@@ -21,6 +28,11 @@ class AuthService {
       'password': password,
       'name': displayName,
       'role': role,
+      'address': address ?? '',
+      'contact': contact ?? '',
+      'barangay': barangay ?? '',
+      'age': age ?? '',
+      'position': position ?? '',
     };
     _usernameToEmail[username] = email;
     _currentEmail = email;

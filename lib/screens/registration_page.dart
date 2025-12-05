@@ -586,29 +586,35 @@ class _CitizenRegistrationFormState extends State<CitizenRegistrationForm> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                uploadedFileName = 'barangay_id_front.jpg';
-                              });
-                            },
-                            icon: Icon(Icons.folder_open),
-                            label: Text('Browse files'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.brightBlue,
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  uploadedFileName = 'barangay_id_front.jpg';
+                                });
+                              },
+                              icon: Icon(Icons.folder_open, size: 18),
+                              label: Text('Browse files', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.brightBlue,
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              ),
                             ),
                           ),
                           SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                uploadedFileName = 'photo_from_camera.jpg';
-                              });
-                            },
-                            icon: Icon(Icons.camera_alt),
-                            label: Text('Open camera'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.brightGreen,
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  uploadedFileName = 'photo_from_camera.jpg';
+                                });
+                              },
+                              icon: Icon(Icons.camera_alt, size: 18),
+                              label: Text('Open camera', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.brightGreen,
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              ),
                             ),
                           ),
                         ],
@@ -722,7 +728,17 @@ class _CitizenRegistrationFormState extends State<CitizenRegistrationForm> {
                         return;
                       }
 
-                      final ok = AuthService.instance.register(email, username, password, fullName, role: 'citizen');
+                      final ok = AuthService.instance.register(
+                        email,
+                        username,
+                        password,
+                        fullName,
+                        role: 'citizen',
+                        address: address,
+                        contact: contact,
+                        barangay: selectedBarangay != 'Select your barangay' ? selectedBarangay : null,
+                        age: age,
+                      );
                       if (ok) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Registration successful — please login'), backgroundColor: AppColors.brightGreen),
@@ -1160,29 +1176,35 @@ class _OfficialRegistrationFormState extends State<OfficialRegistrationForm> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                uploadedFileName = 'official_id.pdf';
-                              });
-                            },
-                            icon: Icon(Icons.folder_open),
-                            label: Text('Browse files'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.brightBlue,
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  uploadedFileName = 'official_id.pdf';
+                                });
+                              },
+                              icon: Icon(Icons.folder_open, size: 18),
+                              label: Text('Browse files', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.brightBlue,
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              ),
                             ),
                           ),
                           SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                uploadedFileName = 'appointment_photo.jpg';
-                              });
-                            },
-                            icon: Icon(Icons.camera_alt),
-                            label: Text('Open camera'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.brightGreen,
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  uploadedFileName = 'appointment_photo.jpg';
+                                });
+                              },
+                              icon: Icon(Icons.camera_alt, size: 18),
+                              label: Text('Open camera', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.brightGreen,
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              ),
                             ),
                           ),
                         ],
@@ -1339,7 +1361,16 @@ class _OfficialRegistrationFormState extends State<OfficialRegistrationForm> {
                         return;
                       }
 
-final ok = AuthService.instance.register(email, username, password, fullName, role: 'official');
+final ok = AuthService.instance.register(
+                        email,
+                        username,
+                        password,
+                        fullName,
+                        role: 'official',
+                        contact: contact,
+                        barangay: selectedBarangay != 'Select barangay office' ? selectedBarangay : null,
+                        position: position,
+                      );
                       if (ok) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Registration successful — please login'), backgroundColor: AppColors.brightGreen),

@@ -20,68 +20,124 @@ class _RequestPageState extends State<RequestPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryOrange,
-        title: const Text('Submit a Request'),
-      ),
       body: Container(
-        color: AppColors.paleOrange,
+        decoration: BoxDecoration(
+          color: AppColors.primaryOrange,
+        ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Select a request type',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: AppColors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Submit a Request',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Choose type',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+              ),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _RequestTile(
-                        title: 'Barangay Clearance',
-                        icon: Icons.card_giftcard,
-                        onTap: () => setState(() => selectedRequest = 'Barangay Clearance'),
+                      const Text(
+                        'Request type',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      _RequestTile(
-                        title: 'Certification',
-                        icon: Icons.verified,
-                        onTap: () => setState(() => selectedRequest = 'Certification'),
-                      ),
-                      _RequestTile(
-                        title: 'Barangay ID',
-                        icon: Icons.badge,
-                        onTap: () => setState(() => selectedRequest = 'Barangay ID'),
-                      ),
-                      _RequestTile(
-                        title: 'Permit Request',
-                        icon: Icons.assignment_turned_in,
-                        onTap: () => setState(() => selectedRequest = 'Permit Request'),
-                      ),
-                      _RequestTile(
-                        title: 'Request for Assistance',
-                        icon: Icons.help,
-                        onTap: () => setState(() => selectedRequest = 'Request for Assistance'),
-                      ),
-                      _RequestTile(
-                        title: 'Other Request',
-                        icon: Icons.more_horiz,
-                        onTap: () => setState(() => selectedRequest = 'Other Request'),
+                      const SizedBox(height: 16),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                        children: [
+                          _RequestTypeCard(
+                            title: 'Barangay Clearance',
+                            description: 'For employment, travel, etc.',
+                            icon: Icons.description,
+                            iconColor: Colors.lightBlue,
+                            onTap: () => setState(() => selectedRequest = 'Barangay Clearance'),
+                          ),
+                          _RequestTypeCard(
+                            title: 'Certification',
+                            description: 'Residency, indigency and more.',
+                            icon: Icons.verified,
+                            iconColor: Colors.lightGreen,
+                            onTap: () => setState(() => selectedRequest = 'Certification'),
+                          ),
+                          _RequestTypeCard(
+                            title: 'Barangay ID',
+                            description: 'Local identification card.',
+                            icon: Icons.badge,
+                            iconColor: Colors.purple,
+                            onTap: () => setState(() => selectedRequest = 'Barangay ID'),
+                          ),
+                          _RequestTypeCard(
+                            title: 'Permit',
+                            description: 'Business, events & others.',
+                            icon: Icons.assignment_turned_in,
+                            iconColor: Colors.orange,
+                            onTap: () => setState(() => selectedRequest = 'Permit Request'),
+                          ),
+                          _RequestTypeCard(
+                            title: 'Assistance',
+                            description: 'Medical, financial, calamity.',
+                            icon: Icons.medical_services,
+                            iconColor: Colors.red,
+                            onTap: () => setState(() => selectedRequest = 'Request for Assistance'),
+                          ),
+                          _RequestTypeCard(
+                            title: 'Others',
+                            description: 'Not listed above.',
+                            icon: Icons.more_horiz,
+                            iconColor: Colors.grey,
+                            onTap: () => setState(() => selectedRequest = 'Other Request'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -108,14 +164,18 @@ class _RequestPageState extends State<RequestPage> {
   }
 }
 
-class _RequestTile extends StatelessWidget {
+class _RequestTypeCard extends StatelessWidget {
   final String title;
+  final String description;
   final IconData icon;
+  final Color iconColor;
   final VoidCallback onTap;
 
-  const _RequestTile({
+  const _RequestTypeCard({
     required this.title,
+    required this.description,
     required this.icon,
+    required this.iconColor,
     required this.onTap,
   });
 
@@ -123,35 +183,50 @@ class _RequestTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              colors: [AppColors.paleOrange, AppColors.primaryOrange.withOpacity(0.8)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.grey[300]!,
+            width: 1,
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.white, size: 40),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
+              child: Icon(icon, color: iconColor, size: 32),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 11,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -187,7 +262,6 @@ class _BarangayClearanceFormState extends State<BarangayClearanceForm> {
       return;
     }
     
-    // Submit to DataService
     final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
     DataService.instance.submitRequest(
       'Barangay Clearance',
@@ -289,7 +363,6 @@ class _CertificationFormState extends State<CertificationForm> {
       return;
     }
     
-    // Submit to DataService
     final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
     DataService.instance.submitRequest(
       'Certification',
@@ -401,7 +474,6 @@ class _BarangayIDFormState extends State<BarangayIDForm> {
       return;
     }
     
-    // Submit to DataService
     final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
     DataService.instance.submitRequest(
       'Barangay ID',
@@ -530,7 +602,6 @@ class _PermitRequestFormState extends State<PermitRequestForm> {
       return;
     }
     
-    // Submit to DataService
     final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
     DataService.instance.submitRequest(
       'Permit Request',
@@ -642,7 +713,6 @@ class _AssistanceRequestFormState extends State<AssistanceRequestForm> {
       return;
     }
     
-    // Submit to DataService
     final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
     DataService.instance.submitRequest(
       'Request for Assistance',
@@ -752,7 +822,6 @@ class _OtherRequestFormState extends State<OtherRequestForm> {
       return;
     }
     
-    // Submit to DataService
     final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
     DataService.instance.submitRequest(
       'Other Request',

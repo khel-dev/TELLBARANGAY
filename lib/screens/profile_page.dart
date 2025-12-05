@@ -41,10 +41,10 @@ class _ProfilePageState extends State<ProfilePage> {
               color: AppColors.white,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'Citizen',
-                style: TextStyle(
+                currentUser?['role'] == 'official' ? 'Official' : 'Citizen',
+                style: const TextStyle(
                   color: AppColors.primaryOrange,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -170,12 +170,26 @@ class _ProfilePageState extends State<ProfilePage> {
                         const SizedBox(height: 20),
                         // Information fields
                         _buildInfoField('Email', userEmail, Icons.email),
-                        const SizedBox(height: 16),
-                        _buildInfoField('Mobile', '+63 9XX XXX XXXX', Icons.phone),
-                        const SizedBox(height: 16),
-                        _buildInfoField('Address', 'Blk 4, Lot 7, Purok 5, Brgy. Malinis', Icons.location_on),
-                        const SizedBox(height: 16),
-                        _buildInfoField('Barangay', 'Malinis, Quezon City', Icons.home),
+                        if (currentUser?['contact'] != null && currentUser!['contact']!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildInfoField('Mobile', currentUser!['contact']!, Icons.phone),
+                        ],
+                        if (currentUser?['address'] != null && currentUser!['address']!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildInfoField('Address', currentUser!['address']!, Icons.location_on),
+                        ],
+                        if (currentUser?['barangay'] != null && currentUser!['barangay']!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildInfoField('Barangay', currentUser!['barangay']!, Icons.home),
+                        ],
+                        if (currentUser?['age'] != null && currentUser!['age']!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildInfoField('Age', currentUser!['age']!, Icons.calendar_today),
+                        ],
+                        if (currentUser?['position'] != null && currentUser!['position']!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildInfoField('Position', currentUser!['position']!, Icons.badge),
+                        ],
                         const SizedBox(height: 28),
                         // Edit Profile button
                         SizedBox(

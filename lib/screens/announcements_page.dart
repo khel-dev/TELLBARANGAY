@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
+import '../services/data_service.dart';
 
 class AnnouncementsPage extends StatefulWidget {
   const AnnouncementsPage({Key? key}) : super(key: key);
@@ -9,44 +10,28 @@ class AnnouncementsPage extends StatefulWidget {
 }
 
 class _AnnouncementsPageState extends State<AnnouncementsPage> {
-  final List<Map<String, String>> announcements = [
-    {
-      'title': 'Free Medical Mission',
-      'description': 'FREE MEDICAL MISSION THIS SATURDAY! Join us for a community health check-up featuring dental services, blood pressure monitoring, and general consultations.',
-      'date': '2025-12-07',
-      'icon': '🏥',
-    },
-    {
-      'title': 'Community Cleanup Drive',
-      'description': 'Help us keep our barangay clean! We\'re organizing a community-wide cleanup drive. All residents are welcome to participate.',
-      'date': '2025-12-10',
-      'icon': '🧹',
-    },
-    {
-      'title': 'Vaccination Program',
-      'description': 'Important reminder: Our barangay vaccination program continues every Wednesday. Bring your health card and valid ID. Parents with children below 5 are prioritized.',
-      'date': '2025-12-12',
-      'icon': '💉',
-    },
-    {
-      'title': 'Barangay Assembly Meeting',
-      'description': 'You are invited to our monthly Barangay Assembly. We will discuss budget allocation, community projects, and hear your concerns.',
-      'date': '2025-12-15',
-      'icon': '📢',
-    },
-    {
-      'title': 'Scholarship Application',
-      'description': 'Applications for the 2026 Barangay Scholarship Program are now open. Deserving students can apply at the Barangay Hall from Monday to Friday.',
-      'date': '2025-12-18',
-      'icon': '📚',
-    },
-    {
-      'title': 'Sports Tournament',
-      'description': 'The annual Barangay Sports Festival is coming! Teams can now register for basketball, volleyball, and badminton categories at the Barangay Hall.',
-      'date': '2025-12-20',
-      'icon': '⚽',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Add some default announcements if none exist
+    final announcements = DataService.instance.getAnnouncements();
+    if (announcements.isEmpty) {
+      DataService.instance.addAnnouncement(
+        'Free Medical Mission',
+        'FREE MEDICAL MISSION THIS SATURDAY! Join us for a community health check-up featuring dental services, blood pressure monitoring, and general consultations.',
+      );
+      DataService.instance.addAnnouncement(
+        'Community Cleanup Drive',
+        'Help us keep our barangay clean! We\'re organizing a community-wide cleanup drive. All residents are welcome to participate.',
+      );
+      DataService.instance.addAnnouncement(
+        'Vaccination Program',
+        'Important reminder: Our barangay vaccination program continues every Wednesday. Bring your health card and valid ID. Parents with children below 5 are prioritized.',
+      );
+    }
+  }
+
+  List<Map<String, String>> get announcements => DataService.instance.getAnnouncements();
 
   @override
   Widget build(BuildContext context) {
@@ -97,10 +82,10 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
 
   Widget _buildAnnouncementCard(
       BuildContext context, Map<String, String> announcement) {
-    final icon = announcement['icon'] ?? '📢';
+    final icon = '📢';
     final title = announcement['title'] ?? 'Announcement';
     final description = announcement['description'] ?? '';
-    final date = announcement['date'] ?? '';
+    final date = _formatDate(announcement['date'] ?? '');
 
     return GestureDetector(
       onTap: () => _showAnnouncementDetails(context, announcement),
@@ -199,7 +184,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  _formatDate(date),
+                                  date,
                                   style: TextStyle(
                                     color: AppColors.lightGrey,
                                     fontSize: 11,
@@ -379,12 +364,19 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
   }
 
   String _formatDate(String isoDate) {
-    if (isoDate.isEmpty) return 'Unknown date';
+    if (isoDate.isEmpty) return 'Just now';
     try {
       final date = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inMinutes < 1) return 'Just now';
+      if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+      if (difference.inHours < 24) return '${difference.inHours}h ago';
+      if (difference.inDays < 7) return '${difference.inDays}d ago';
       return '${date.day}/${date.month}/${date.year}';
     } catch (e) {
-      return 'Unknown date';
+      return 'Just now';
     }
   }
 }
