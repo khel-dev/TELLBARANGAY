@@ -695,8 +695,8 @@ class _CitizenRegistrationFormState extends State<CitizenRegistrationForm> {
                 SizedBox(
                   width: double.infinity,
                   height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
+                    child: ElevatedButton(
+                      onPressed: () async {
                       final fullName = fullNameController.text.trim();
                       final email = emailController.text.trim();
                       final username = usernameController.text.trim();
@@ -728,7 +728,7 @@ class _CitizenRegistrationFormState extends State<CitizenRegistrationForm> {
                         return;
                       }
 
-                      final ok = AuthService.instance.register(
+                      final errorMessage = await AuthService.instance.register(
                         email,
                         username,
                         password,
@@ -739,14 +739,15 @@ class _CitizenRegistrationFormState extends State<CitizenRegistrationForm> {
                         barangay: selectedBarangay != 'Select your barangay' ? selectedBarangay : null,
                         age: age,
                       );
-                      if (ok) {
+                      if (!mounted) return;
+                      if (errorMessage == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Registration successful — please login'), backgroundColor: AppColors.brightGreen),
                         );
                         Navigator.pushReplacementNamed(context, '/login');
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Registration failed — email or username may already exist'), backgroundColor: AppColors.accentRed),
+                          SnackBar(content: Text(errorMessage), backgroundColor: AppColors.accentRed),
                         );
                       }
                     },
@@ -1328,8 +1329,8 @@ class _OfficialRegistrationFormState extends State<OfficialRegistrationForm> {
                 SizedBox(
                   width: double.infinity,
                   height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
+                    child: ElevatedButton(
+                      onPressed: () async {
                       final fullName = fullNameController.text.trim();
                       final email = emailController.text.trim();
                       final username = usernameController.text.trim();
@@ -1361,7 +1362,7 @@ class _OfficialRegistrationFormState extends State<OfficialRegistrationForm> {
                         return;
                       }
 
-final ok = AuthService.instance.register(
+                      final errorMessage = await AuthService.instance.register(
                         email,
                         username,
                         password,
@@ -1371,14 +1372,15 @@ final ok = AuthService.instance.register(
                         barangay: selectedBarangay != 'Select barangay office' ? selectedBarangay : null,
                         position: position,
                       );
-                      if (ok) {
+                      if (!mounted) return;
+                      if (errorMessage == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Registration successful — please login'), backgroundColor: AppColors.brightGreen),
                         );
                         Navigator.pushReplacementNamed(context, '/login');
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Registration failed — email or username may already exist'), backgroundColor: AppColors.accentRed),
+                          SnackBar(content: Text(errorMessage), backgroundColor: AppColors.accentRed),
                         );
                       }
                     },

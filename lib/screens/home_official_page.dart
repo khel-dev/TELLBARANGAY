@@ -201,7 +201,7 @@ class HomeOfficialPage extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: 0.95,
+                        childAspectRatio: 0.85,
                         children: [
                           _ActionCard(
                             title: 'Received Reports',

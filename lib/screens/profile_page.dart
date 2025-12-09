@@ -170,25 +170,25 @@ class _ProfilePageState extends State<ProfilePage> {
                         const SizedBox(height: 20),
                         // Information fields
                         _buildInfoField('Email', userEmail, Icons.email),
-                        if (currentUser?['contact'] != null && currentUser!['contact']!.isNotEmpty) ...[
+                        if (currentUser?['contact'] != null && (currentUser?['contact'] as String?)?.isNotEmpty == true) ...[
                           const SizedBox(height: 16),
-                          _buildInfoField('Mobile', currentUser!['contact']!, Icons.phone),
+                          _buildInfoField('Mobile', currentUser?['contact'] ?? 'N/A', Icons.phone),
                         ],
-                        if (currentUser?['address'] != null && currentUser!['address']!.isNotEmpty) ...[
+                        if (currentUser?['address'] != null && (currentUser?['address'] as String?)?.isNotEmpty == true) ...[
                           const SizedBox(height: 16),
-                          _buildInfoField('Address', currentUser!['address']!, Icons.location_on),
+                          _buildInfoField('Address', currentUser?['address'] ?? 'N/A', Icons.location_on),
                         ],
-                        if (currentUser?['barangay'] != null && currentUser!['barangay']!.isNotEmpty) ...[
+                        if (currentUser?['barangay'] != null && (currentUser?['barangay'] as String?)?.isNotEmpty == true) ...[
                           const SizedBox(height: 16),
-                          _buildInfoField('Barangay', currentUser!['barangay']!, Icons.home),
+                          _buildInfoField('Barangay', currentUser?['barangay'] ?? 'N/A', Icons.home),
                         ],
-                        if (currentUser?['age'] != null && currentUser!['age']!.isNotEmpty) ...[
+                        if (currentUser?['age'] != null && (currentUser?['age'] as String?)?.isNotEmpty == true) ...[
                           const SizedBox(height: 16),
-                          _buildInfoField('Age', currentUser!['age']!, Icons.calendar_today),
+                          _buildInfoField('Age', currentUser?['age'] ?? 'N/A', Icons.calendar_today),
                         ],
-                        if (currentUser?['position'] != null && currentUser!['position']!.isNotEmpty) ...[
+                        if (currentUser?['position'] != null && (currentUser?['position'] as String?)?.isNotEmpty == true) ...[
                           const SizedBox(height: 16),
-                          _buildInfoField('Position', currentUser!['position']!, Icons.badge),
+                          _buildInfoField('Position', currentUser?['position'] ?? 'N/A', Icons.badge),
                         ],
                         const SizedBox(height: 28),
                         // Edit Profile button

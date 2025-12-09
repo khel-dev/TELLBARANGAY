@@ -23,11 +23,12 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _attemptLogin() {
+  Future<void> _attemptLogin() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
-    final ok = AuthService.instance.login(email, password);
-    if (ok) {
+    final errorMessage = await AuthService.instance.login(email, password);
+    if (!mounted) return;
+    if (errorMessage == null) {
       final userRole = AuthService.instance.currentUserRole;
       if (userRole == 'official') {
         Navigator.pushReplacementNamed(context, '/official-home');
@@ -37,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Invalid credentials'),
+          content: Text(errorMessage),
           backgroundColor: AppColors.accentRed,
         ),
       );
