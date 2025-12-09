@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 import '../services/auth_service.dart';
-import '../services/data_service.dart';
+import '../services/database.dart';
 
 class HomeOfficialPage extends StatelessWidget {
   const HomeOfficialPage({Key? key}) : super(key: key);
@@ -12,13 +12,7 @@ class HomeOfficialPage extends StatelessWidget {
     final displayName = user != null && user['name']!.isNotEmpty
         ? user['name']!
         : 'Official';
-
-    final reports = DataService.instance.getReports();
-    final requests = DataService.instance.getRequests();
-    final pendingReports = reports.where((r) => r['status'] == 'Pending').length;
-    final pendingRequests = requests.where((r) => r['status'] == 'Pending').length;
-    final inProgressReports = reports.where((r) => r['status'] == 'In Progress').length;
-    final solvedReports = reports.where((r) => r['status'] == 'Solved').length;
+    final db = DatabaseService.instance;
 
     return Scaffold(
       body: Container(
@@ -131,48 +125,70 @@ class HomeOfficialPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatCard(
-                              title: 'Pending Reports',
-                              count: pendingReports,
-                              icon: Icons.report_problem,
-                              color: Colors.red,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(
-                              title: 'Pending Requests',
-                              count: pendingRequests,
-                              icon: Icons.assignment,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatCard(
-                              title: 'In Progress',
-                              count: inProgressReports,
-                              icon: Icons.hourglass_top,
-                              color: Colors.lightBlue,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(
-                              title: 'Solved',
-                              count: solvedReports,
-                              icon: Icons.check_circle,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: db.getReportsStream(),
+                        builder: (context, reportsSnapshot) {
+                          final reports = reportsSnapshot.data ?? [];
+                          final pendingReports = reports.where((r) => r['status'] == 'Pending').length;
+                          final inProgressReports = reports.where((r) => r['status'] == 'In Progress').length;
+                          final solvedReports = reports.where((r) => r['status'] == 'Solved').length;
+                          
+                          return StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: db.getRequestsStream(),
+                            builder: (context, requestsSnapshot) {
+                              final requests = requestsSnapshot.data ?? [];
+                              final pendingRequests = requests.where((r) => r['status'] == 'Pending').length;
+                              
+                              return Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _StatCard(
+                                          title: 'Pending Reports',
+                                          count: pendingReports,
+                                          icon: Icons.report_problem,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _StatCard(
+                                          title: 'Pending Requests',
+                                          count: pendingRequests,
+                                          icon: Icons.assignment,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _StatCard(
+                                          title: 'In Progress',
+                                          count: inProgressReports,
+                                          icon: Icons.hourglass_top,
+                                          color: Colors.lightBlue,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _StatCard(
+                                          title: 'Solved',
+                                          count: solvedReports,
+                                          icon: Icons.check_circle,
+                                          color: Colors.green,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -195,45 +211,61 @@ class HomeOfficialPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.85,
-                        children: [
-                          _ActionCard(
-                            title: 'Received Reports',
-                            description: 'View & resolve citizen reports',
-                            icon: Icons.report_problem,
-                            iconColor: Colors.red,
-                            onTap: () => Navigator.pushNamed(context, '/official-reports'),
-                            badgeCount: pendingReports > 0 ? pendingReports : null,
-                          ),
-                          _ActionCard(
-                            title: 'Requests to Process',
-                            description: 'Approve or reject requests',
-                            icon: Icons.assignment_turned_in,
-                            iconColor: Colors.blue,
-                            onTap: () => Navigator.pushNamed(context, '/official-requests'),
-                            badgeCount: pendingRequests > 0 ? pendingRequests : null,
-                          ),
-                          _ActionCard(
-                            title: 'Post Announcements',
-                            description: 'Share barangay updates',
-                            icon: Icons.campaign,
-                            iconColor: Colors.purple,
-                            onTap: () => Navigator.pushNamed(context, '/official-announcements'),
-                          ),
-                          _ActionCard(
-                            title: 'Analytics',
-                            description: 'View dashboard stats',
-                            icon: Icons.bar_chart,
-                            iconColor: Colors.orange,
-                            onTap: () => Navigator.pushNamed(context, '/official-analytics'),
-                          ),
-                        ],
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: db.getReportsStream(),
+                        builder: (context, reportsSnapshot) {
+                          final reports = reportsSnapshot.data ?? [];
+                          final pendingReports = reports.where((r) => r['status'] == 'Pending').length;
+                          
+                          return StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: db.getRequestsStream(),
+                            builder: (context, requestsSnapshot) {
+                              final requests = requestsSnapshot.data ?? [];
+                              final pendingRequests = requests.where((r) => r['status'] == 'Pending').length;
+                              
+                              return GridView.count(
+                                crossAxisCount: 2,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.85,
+                                children: [
+                                  _ActionCard(
+                                    title: 'Received Reports',
+                                    description: 'View & resolve citizen reports',
+                                    icon: Icons.report_problem,
+                                    iconColor: Colors.red,
+                                    onTap: () => Navigator.pushNamed(context, '/official-reports'),
+                                    badgeCount: pendingReports > 0 ? pendingReports : null,
+                                  ),
+                                  _ActionCard(
+                                    title: 'Requests to Process',
+                                    description: 'Approve or reject requests',
+                                    icon: Icons.assignment_turned_in,
+                                    iconColor: Colors.blue,
+                                    onTap: () => Navigator.pushNamed(context, '/official-requests'),
+                                    badgeCount: pendingRequests > 0 ? pendingRequests : null,
+                                  ),
+                                  _ActionCard(
+                                    title: 'Post Announcements',
+                                    description: 'Share barangay updates',
+                                    icon: Icons.campaign,
+                                    iconColor: Colors.purple,
+                                    onTap: () => Navigator.pushNamed(context, '/official-announcements'),
+                                  ),
+                                  _ActionCard(
+                                    title: 'Analytics',
+                                    description: 'View dashboard stats',
+                                    icon: Icons.bar_chart,
+                                    iconColor: Colors.orange,
+                                    onTap: () => Navigator.pushNamed(context, '/official-analytics'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -256,49 +288,67 @@ class HomeOfficialPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      if (reports.isEmpty && requests.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'No recent activity',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: db.getReportsStream(),
+                        builder: (context, reportsSnapshot) {
+                          final reports = reportsSnapshot.data ?? [];
+                          
+                          return StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: db.getRequestsStream(),
+                            builder: (context, requestsSnapshot) {
+                              final requests = requestsSnapshot.data ?? [];
+                              
+                              if (reports.isEmpty && requests.isEmpty) {
+                                return Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.white,
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else ...[
-                        if (reports.isNotEmpty)
-                          _ActivityCard(
-                            title: reports.last['category'] ?? 'Report',
-                            subtitle: 'From ${reports.last['fullName'] ?? 'Citizen'}',
-                            timestamp: _formatTime(reports.last['date'] ?? ''),
-                            status: reports.last['status'] ?? 'Pending',
-                            type: 'report',
-                          ),
-                        if (requests.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          _ActivityCard(
-                            title: requests.last['type'] ?? 'Request',
-                            subtitle: 'From ${requests.last['fullName'] ?? 'Citizen'}',
-                            timestamp: _formatTime(requests.last['date'] ?? ''),
-                            status: requests.last['status'] ?? 'Pending',
-                            type: 'request',
-                          ),
-                        ],
-                      ],
+                                  child: Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'No recent activity',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                              
+                              return Column(
+                                children: [
+                                  if (reports.isNotEmpty)
+                                    _ActivityCard(
+                                      title: reports.first['title']?.toString() ?? reports.first['category']?.toString() ?? 'Report',
+                                      subtitle: 'Category: ${reports.first['category']?.toString() ?? 'N/A'}',
+                                      timestamp: _formatTime(reports.first['createdAt']),
+                                      status: reports.first['status']?.toString() ?? 'Pending',
+                                      type: 'report',
+                                    ),
+                                  if (requests.isNotEmpty) ...[
+                                    if (reports.isNotEmpty) const SizedBox(height: 12),
+                                    _ActivityCard(
+                                      title: requests.first['type']?.toString() ?? 'Request',
+                                      subtitle: 'From: ${requests.first['fullName']?.toString() ?? 'Citizen'}',
+                                      timestamp: _formatTime(requests.first['createdAt']),
+                                      status: requests.first['status']?.toString() ?? 'Pending',
+                                      type: 'request',
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -312,18 +362,32 @@ class HomeOfficialPage extends StatelessWidget {
     );
   }
 
-  String _formatTime(String isoDate) {
-    if (isoDate.isEmpty) return 'Just now';
+  String _formatTime(dynamic date) {
+    if (date == null) return 'Just now';
     try {
-      final date = DateTime.parse(isoDate);
+      DateTime dateTime;
+      if (date is DateTime) {
+        dateTime = date;
+      } else if (date is Map) {
+        // Firestore Timestamp
+        final seconds = date['_seconds'] as int?;
+        if (seconds != null) {
+          dateTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+        } else {
+          return 'Just now';
+        }
+      } else {
+        return 'Just now';
+      }
+      
       final now = DateTime.now();
-      final difference = now.difference(date);
+      final difference = now.difference(dateTime);
 
       if (difference.inMinutes < 1) return 'Just now';
       if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
       if (difference.inHours < 24) return '${difference.inHours}h ago';
       if (difference.inDays < 7) return '${difference.inDays}d ago';
-      return '${date.day}/${date.month}/${date.year}';
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     } catch (e) {
       return 'Just now';
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
-import '../services/data_service.dart';
+import '../services/database.dart';
+import '../services/auth_service.dart';
 
 class TrackPage extends StatefulWidget {
   const TrackPage({Key? key}) : super(key: key);
@@ -12,6 +13,7 @@ class TrackPage extends StatefulWidget {
 class _TrackPageState extends State<TrackPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final DatabaseService _db = DatabaseService.instance;
 
   @override
   void initState() {
@@ -87,16 +89,150 @@ class _TrackPageState extends State<TrackPage>
   }
 
   Widget _buildReportsTab() {
-    final reports = DataService.instance.getReports();
-    return _buildItemsList(reports, 'Reports', isReports: true);
+    final currentUid = AuthService.instance.currentUid;
+    if (currentUid == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColors.white.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'Please login to view your reports',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.getUserReportsStream(currentUid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+            ),
+          );
+        }
+        
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: AppColors.white.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading reports',
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: TextStyle(
+                      color: AppColors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        final reports = snapshot.data ?? [];
+        return _buildItemsList(reports, 'reports', isReports: true);
+      },
+    );
   }
 
   Widget _buildRequestsTab() {
-    final requests = DataService.instance.getRequests();
-    return _buildItemsList(requests, 'Requests', isReports: false);
+    final currentUid = AuthService.instance.currentUid;
+    if (currentUid == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColors.white.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'Please login to view your requests',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.getUserRequestsStream(currentUid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+            ),
+          );
+        }
+        
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: AppColors.white.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading requests',
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: TextStyle(
+                      color: AppColors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        final requests = snapshot.data ?? [];
+        return _buildItemsList(requests, 'requests', isReports: false);
+      },
+    );
   }
 
-  Widget _buildItemsList(List<Map<String, String>> items, String type,
+  Widget _buildItemsList(List<Map<String, dynamic>> items, String type,
       {required bool isReports}) {
     if (items.isEmpty) {
       return Center(
@@ -134,8 +270,8 @@ class _TrackPageState extends State<TrackPage>
       padding: const EdgeInsets.all(16),
       itemCount: items.length,
       itemBuilder: (context, index) {
-        final item = items[items.length - 1 - index]; // Reverse order (newest first)
-        final status = item['status'] ?? 'Pending';
+        final item = items[index]; // Already sorted by date descending
+        final status = item['status']?.toString() ?? 'Pending';
         final statusColor = status == 'Solved'
             ? AppColors.brightGreen
             : (status == 'In Progress'
@@ -182,7 +318,7 @@ class _TrackPageState extends State<TrackPage>
                         children: [
                           Expanded(
                             child: Text(
-                              item['id'] ?? 'N/A',
+                              item['id']?.toString().substring(0, 8) ?? 'N/A',
                               style: TextStyle(
                                 color: AppColors.primaryOrange,
                                 fontSize: 13,
@@ -215,8 +351,8 @@ class _TrackPageState extends State<TrackPage>
                       // Type/Category
                       Text(
                         isReports
-                            ? item['category'] ?? 'N/A'
-                            : item['type'] ?? 'N/A',
+                            ? item['title']?.toString() ?? item['category']?.toString() ?? 'N/A'
+                            : item['type']?.toString() ?? 'N/A',
                         style: const TextStyle(
                           color: AppColors.primaryOrange,
                           fontSize: 16,
@@ -227,12 +363,12 @@ class _TrackPageState extends State<TrackPage>
                       // Description/Purpose
                       Text(
                         isReports
-                            ? (item['description'] ?? '').length > 80
-                                ? '${(item['description'] ?? '').substring(0, 80)}...'
-                                : (item['description'] ?? '')
-                            : (item['purpose'] ?? '').length > 80
-                                ? '${(item['purpose'] ?? '').substring(0, 80)}...'
-                                : (item['purpose'] ?? ''),
+                            ? (item['description']?.toString() ?? '').length > 80
+                                ? '${(item['description']?.toString() ?? '').substring(0, 80)}...'
+                                : (item['description']?.toString() ?? '')
+                            : (item['purpose']?.toString() ?? '').length > 80
+                                ? '${(item['purpose']?.toString() ?? '').substring(0, 80)}...'
+                                : (item['purpose']?.toString() ?? ''),
                         style: TextStyle(
                           color: AppColors.darkGrey,
                           fontSize: 13,
@@ -255,7 +391,7 @@ class _TrackPageState extends State<TrackPage>
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                _formatDate(item['date'] ?? ''),
+                                _formatDate(item['createdAt']),
                                 style: const TextStyle(
                                   color: Colors.black87,
                                   fontSize: 12,
@@ -266,25 +402,6 @@ class _TrackPageState extends State<TrackPage>
                           ),
                           Row(
                             children: [
-                              // Edit button
-                              SizedBox(
-                                width: 32,
-                                height: 32,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: Icon(
-                                    Icons.edit,
-                                    size: 16,
-                                    color: AppColors.brightBlue,
-                                  ),
-                                  onPressed: () => _showEditDialog(
-                                    context,
-                                    item,
-                                    isReports,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
                               // Delete button
                               SizedBox(
                                 width: 32,
@@ -326,7 +443,7 @@ class _TrackPageState extends State<TrackPage>
     );
   }
 
-  void _showRequestDetails(BuildContext context, Map<String, String> request) {
+  void _showRequestDetails(BuildContext context, Map<String, dynamic> request) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -353,7 +470,7 @@ class _TrackPageState extends State<TrackPage>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    request['type'] ?? 'Request Details',
+                    request['type']?.toString() ?? 'Request Details',
                     style: const TextStyle(
                       color: AppColors.primaryOrange,
                       fontSize: 18,
@@ -367,12 +484,12 @@ class _TrackPageState extends State<TrackPage>
                 ],
               ),
               const SizedBox(height: 20),
-              _buildDetailField('Request ID', request['id'] ?? 'N/A'),
-              _buildDetailField('Full Name', request['fullName'] ?? 'N/A'),
-              _buildDetailField('Type', request['type'] ?? 'N/A'),
-              _buildDetailField('Purpose', request['purpose'] ?? 'N/A'),
-              _buildDetailField('Status', request['status'] ?? 'N/A'),
-              _buildDetailField('Submitted', _formatDate(request['date'] ?? '')),
+              _buildDetailField('Request ID', request['id']?.toString().substring(0, 12) ?? 'N/A'),
+              _buildDetailField('Full Name', request['fullName']?.toString() ?? 'N/A'),
+              _buildDetailField('Type', request['type']?.toString() ?? 'N/A'),
+              _buildDetailField('Purpose', request['purpose']?.toString() ?? 'N/A'),
+              _buildDetailField('Status', request['status']?.toString() ?? 'N/A'),
+              _buildDetailField('Submitted', _formatDate(request['createdAt'])),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -430,11 +547,32 @@ class _TrackPageState extends State<TrackPage>
     );
   }
 
-  String _formatDate(String isoDate) {
-    if (isoDate.isEmpty) return 'Unknown date';
+  String _formatDate(dynamic date) {
+    if (date == null) return 'Unknown date';
     try {
-      final date = DateTime.parse(isoDate);
-      return '${date.day}/${date.month}/${date.year}';
+      DateTime dateTime;
+      if (date is DateTime) {
+        dateTime = date;
+      } else if (date is Map) {
+        // Firestore Timestamp
+        final seconds = date['_seconds'] as int?;
+        if (seconds != null) {
+          dateTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+        } else {
+          return 'Unknown date';
+        }
+      } else {
+        return 'Unknown date';
+      }
+      
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) return 'Just now';
+      if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+      if (difference.inHours < 24) return '${difference.inHours}h ago';
+      if (difference.inDays < 7) return '${difference.inDays}d ago';
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     } catch (e) {
       return 'Unknown date';
     }
@@ -442,7 +580,7 @@ class _TrackPageState extends State<TrackPage>
 
   void _showDeleteConfirmation(
     BuildContext context,
-    Map<String, String> item,
+    Map<String, dynamic> item,
     bool isReports,
   ) {
     showDialog(
@@ -458,22 +596,35 @@ class _TrackPageState extends State<TrackPage>
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              if (isReports) {
-                DataService.instance.deleteReport(item['id'] ?? '');
-              } else {
-                DataService.instance.deleteRequest(item['id'] ?? '');
+            onPressed: () async {
+              try {
+                if (isReports) {
+                  await _db.deleteReport(item['id'].toString());
+                } else {
+                  await _db.deleteRequest(item['id'].toString());
+                }
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${isReports ? 'Report' : 'Request'} deleted successfully',
+                      ),
+                      backgroundColor: AppColors.brightGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting: $e'),
+                      backgroundColor: AppColors.accentRed,
+                    ),
+                  );
+                }
               }
-              Navigator.pop(context);
-              setState(() {});
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${isReports ? 'Report' : 'Request'} deleted successfully',
-                  ),
-                  backgroundColor: AppColors.brightGreen,
-                ),
-              );
             },
             child: const Text(
               'Delete',
@@ -485,84 +636,4 @@ class _TrackPageState extends State<TrackPage>
     );
   }
 
-  void _showEditDialog(
-    BuildContext context,
-    Map<String, String> item,
-    bool isReports,
-  ) {
-    final categoryController = TextEditingController(
-      text: isReports ? item['category'] : item['type'],
-    );
-    final descriptionController = TextEditingController(
-      text: isReports ? item['description'] : item['purpose'],
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${isReports ? 'Report' : 'Request'}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: categoryController,
-                decoration: InputDecoration(
-                  labelText: isReports ? 'Category' : 'Type',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                enabled: false,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                decoration: InputDecoration(
-                  labelText: isReports ? 'Description' : 'Purpose',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                maxLines: 4,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (isReports) {
-                DataService.instance.updateReport(
-                  item['id'] ?? '',
-                  categoryController.text,
-                  descriptionController.text,
-                );
-              } else {
-                DataService.instance.updateRequest(
-                  item['id'] ?? '',
-                  descriptionController.text,
-                );
-              }
-              Navigator.pop(context);
-              setState(() {});
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${isReports ? 'Report' : 'Request'} updated successfully',
-                  ),
-                  backgroundColor: AppColors.brightGreen,
-                ),
-              );
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
 }

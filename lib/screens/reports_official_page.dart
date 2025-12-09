@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
-import '../services/data_service.dart';
+import '../services/database.dart';
 
 class ReportsOfficialPage extends StatefulWidget {
   const ReportsOfficialPage({Key? key}) : super(key: key);
@@ -11,14 +11,10 @@ class ReportsOfficialPage extends StatefulWidget {
 
 class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
   String? selectedStatus;
+  final DatabaseService _db = DatabaseService.instance;
 
   @override
   Widget build(BuildContext context) {
-    final allReports = DataService.instance.getReports();
-    final filteredReports = selectedStatus == null
-        ? allReports
-        : allReports.where((r) => r['status'] == selectedStatus).toList();
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -46,20 +42,26 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${allReports.length} Total',
-                        style: const TextStyle(
-                          color: AppColors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: _db.getReportsStream(),
+                      builder: (context, snapshot) {
+                        final count = snapshot.hasData ? snapshot.data!.length : 0;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$count Total',
+                            style: const TextStyle(
+                              color: AppColors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -105,8 +107,44 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
 
               // Reports list
               Expanded(
-                child: filteredReports.isEmpty
-                    ? Center(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _db.getReportsStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 64, color: AppColors.white.withOpacity(0.7)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading reports: ${snapshot.error}',
+                              style: TextStyle(
+                                color: AppColors.white.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final allReports = snapshot.data ?? [];
+                    final filteredReports = selectedStatus == null
+                        ? allReports
+                        : allReports.where((r) => r['status'] == selectedStatus).toList();
+
+                    if (filteredReports.isEmpty) {
+                      return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -126,15 +164,19 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                             ),
                           ],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: filteredReports.length,
-                        itemBuilder: (context, index) {
-                          final report = filteredReports[filteredReports.length - 1 - index];
-                          return _buildReportCard(context, report);
-                        },
-                      ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: filteredReports.length,
+                      itemBuilder: (context, index) {
+                        final report = filteredReports[index];
+                        return _buildReportCard(context, report);
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -143,7 +185,7 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
     );
   }
 
-  Widget _buildReportCard(BuildContext context, Map<String, String> report) {
+  Widget _buildReportCard(BuildContext context, Map<String, dynamic> report) {
     final statusColor = report['status'] == 'Pending'
         ? Colors.orange
         : report['status'] == 'In Progress'
@@ -178,7 +220,7 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          report['category'] ?? 'Report',
+                          report['title'] ?? report['category'] ?? 'Report',
                           style: const TextStyle(
                             color: Colors.black87,
                             fontSize: 16,
@@ -187,7 +229,7 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'From: ${report['fullName'] ?? 'Anonymous'}',
+                          'Category: ${report['category'] ?? 'N/A'}',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -234,7 +276,7 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                       Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
                       Text(
-                        _formatDate(report['date'] ?? ''),
+                        _formatDate(report['createdAt']),
                         style: TextStyle(
                           color: Colors.grey[500],
                           fontSize: 11,
@@ -265,7 +307,7 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
     );
   }
 
-  void _showReportDetails(BuildContext context, Map<String, String> report) {
+  void _showReportDetails(BuildContext context, Map<String, dynamic> report) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -314,13 +356,13 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                 ],
               ),
               const SizedBox(height: 24),
+              _buildDetailRow('Title', report['title'] ?? 'N/A', Icons.title),
+              const SizedBox(height: 16),
               _buildDetailRow('Category', report['category'] ?? 'N/A', Icons.label),
               const SizedBox(height: 16),
               _buildDetailRow('Status', report['status'] ?? 'Pending', Icons.info),
               const SizedBox(height: 16),
-              _buildDetailRow('Reported by', report['fullName'] ?? 'Anonymous', Icons.person),
-              const SizedBox(height: 16),
-              _buildDetailRow('Date', _formatDate(report['date'] ?? ''), Icons.calendar_today),
+              _buildDetailRow('Date', _formatDate(report['createdAt']), Icons.calendar_today),
               const SizedBox(height: 16),
               _buildDetailRow('Reference', '#${report['id']?.substring(0, 12) ?? "N/A"}', Icons.tag),
               const SizedBox(height: 16),
@@ -348,6 +390,47 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                   ),
                 ),
               ),
+              if (report['photos'] != null && (report['photos'] as List).isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Photos',
+                  style: TextStyle(
+                    color: AppColors.primaryOrange,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 100,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: (report['photos'] as List).length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            report['photos'][index],
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 100,
+                                height: 100,
+                                color: Colors.grey[300],
+                                child: Icon(Icons.broken_image, color: Colors.grey[600]),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               Text(
                 'Change Status',
@@ -363,16 +446,28 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      DataService.instance.updateReportStatus(report['id'] ?? '', 'In Progress');
-                      Navigator.pop(context);
-                      setState(() {});
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Status updated to In Progress'),
-                          backgroundColor: AppColors.brightBlue,
-                        ),
-                      );
+                    onPressed: () async {
+                      try {
+                        await _db.updateReportStatus(report['id'], 'In Progress');
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Status updated to In Progress'),
+                              backgroundColor: AppColors.brightBlue,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: AppColors.accentRed,
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.hourglass_top),
                     label: const Text('Mark as In Progress'),
@@ -391,16 +486,28 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      DataService.instance.updateReportStatus(report['id'] ?? '', 'Solved');
-                      Navigator.pop(context);
-                      setState(() {});
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Report marked as Solved'),
-                          backgroundColor: AppColors.brightGreen,
-                        ),
-                      );
+                    onPressed: () async {
+                      try {
+                        await _db.updateReportStatus(report['id'], 'Solved');
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Report marked as Solved'),
+                              backgroundColor: AppColors.brightGreen,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: AppColors.accentRed,
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.check_circle),
                     label: const Text('Mark as Solved'),
@@ -454,18 +561,32 @@ class _ReportsOfficialPageState extends State<ReportsOfficialPage> {
     );
   }
 
-  String _formatDate(String isoDate) {
-    if (isoDate.isEmpty) return 'Unknown date';
+  String _formatDate(dynamic date) {
+    if (date == null) return 'Unknown date';
     try {
-      final date = DateTime.parse(isoDate);
+      DateTime dateTime;
+      if (date is DateTime) {
+        dateTime = date;
+      } else if (date is Map) {
+        // Firestore Timestamp
+        final seconds = date['_seconds'] as int?;
+        if (seconds != null) {
+          dateTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+        } else {
+          return 'Unknown date';
+        }
+      } else {
+        return 'Unknown date';
+      }
+      
       final now = DateTime.now();
-      final difference = now.difference(date);
+      final difference = now.difference(dateTime);
 
       if (difference.inMinutes < 1) return 'Just now';
       if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
       if (difference.inHours < 24) return '${difference.inHours}h ago';
       if (difference.inDays < 7) return '${difference.inDays}d ago';
-      return '${date.day}/${date.month}/${date.year}';
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     } catch (e) {
       return 'Unknown date';
     }

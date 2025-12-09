@@ -134,3 +134,4 @@ Once registration works:
 - **Production**: Before deploying to production, review and tighten security rules based on your needs.
 - **Indexes**: If you get index errors, Firebase will provide a link to create the required indexes automatically.
 
+

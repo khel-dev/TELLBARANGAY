@@ -144,22 +144,41 @@ class DatabaseService {
 
   /// Get reports for a specific user
   Stream<List<Map<String, dynamic>>> getUserReportsStream(String uid) {
-    try {
-      return _db
-          .collection('reports')
-          .where('createdBy', isEqualTo: uid)
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return data;
-        }).toList();
+    // Try with orderBy first, fallback to manual sorting if index doesn't exist
+    return _db
+        .collection('reports')
+        .where('createdBy', isEqualTo: uid)
+        .snapshots()
+        .map((snapshot) {
+      final reports = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+      
+      // Sort manually by createdAt (descending)
+      reports.sort((a, b) {
+        final aTime = a['createdAt'];
+        final bTime = b['createdAt'];
+        if (aTime == null || bTime == null) return 0;
+        
+        // Handle Firestore Timestamp
+        if (aTime is Map && bTime is Map) {
+          final aSec = aTime['_seconds'] as int? ?? 0;
+          final bSec = bTime['_seconds'] as int? ?? 0;
+          return bSec.compareTo(aSec); // Descending
+        }
+        
+        // Handle DateTime
+        if (aTime is DateTime && bTime is DateTime) {
+          return bTime.compareTo(aTime);
+        }
+        
+        return 0;
       });
-    } catch (e) {
-      throw Exception('Error fetching user reports: $e');
-    }
+      
+      return reports;
+    });
   }
 
   /// Get a single report
@@ -184,6 +203,24 @@ class DatabaseService {
         'status': newStatus,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      // Create notification for the report owner
+      final report = await getReport(reportId);
+      if (report != null) {
+        String message = '';
+        if (newStatus == 'In Progress') {
+          message = 'Your report "${report['title'] ?? 'Report'}" is now being processed by the barangay office.';
+        } else if (newStatus == 'Solved') {
+          message = 'Great news! Your report "${report['title'] ?? 'Report'}" has been resolved.';
+        }
+        if (message.isNotEmpty) {
+          await createNotification(
+            toUid: report['createdBy'],
+            message: message,
+            type: 'report_update',
+          );
+        }
+      }
     } catch (e) {
       throw Exception('Error updating report status: $e');
     }
@@ -247,22 +284,41 @@ class DatabaseService {
 
   /// Get requests for a specific user
   Stream<List<Map<String, dynamic>>> getUserRequestsStream(String uid) {
-    try {
-      return _db
-          .collection('requests')
-          .where('createdBy', isEqualTo: uid)
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return data;
-        }).toList();
+    // Try with orderBy first, fallback to manual sorting if index doesn't exist
+    return _db
+        .collection('requests')
+        .where('createdBy', isEqualTo: uid)
+        .snapshots()
+        .map((snapshot) {
+      final requests = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+      
+      // Sort manually by createdAt (descending)
+      requests.sort((a, b) {
+        final aTime = a['createdAt'];
+        final bTime = b['createdAt'];
+        if (aTime == null || bTime == null) return 0;
+        
+        // Handle Firestore Timestamp
+        if (aTime is Map && bTime is Map) {
+          final aSec = aTime['_seconds'] as int? ?? 0;
+          final bSec = bTime['_seconds'] as int? ?? 0;
+          return bSec.compareTo(aSec); // Descending
+        }
+        
+        // Handle DateTime
+        if (aTime is DateTime && bTime is DateTime) {
+          return bTime.compareTo(aTime);
+        }
+        
+        return 0;
       });
-    } catch (e) {
-      throw Exception('Error fetching user requests: $e');
-    }
+      
+      return requests;
+    });
   }
 
   /// Get a single request

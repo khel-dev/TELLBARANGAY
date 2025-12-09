@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
-import '../services/data_service.dart';
+import '../services/database.dart';
 
 class RequestsOfficialPage extends StatefulWidget {
   const RequestsOfficialPage({Key? key}) : super(key: key);
@@ -11,13 +11,10 @@ class RequestsOfficialPage extends StatefulWidget {
 
 class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
   String? selectedStatus;
+  final DatabaseService _db = DatabaseService.instance;
 
   @override
   Widget build(BuildContext context) {
-    final allRequests = DataService.instance.getRequests();
-    final filteredRequests = selectedStatus == null
-        ? allRequests
-        : allRequests.where((r) => r['status'] == selectedStatus).toList();
 
     return Scaffold(
       body: Container(
@@ -46,20 +43,26 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${allRequests.length} Total',
-                        style: const TextStyle(
-                          color: AppColors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: _db.getRequestsStream(),
+                      builder: (context, snapshot) {
+                        final count = snapshot.hasData ? snapshot.data!.length : 0;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$count Total',
+                            style: const TextStyle(
+                              color: AppColors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -105,8 +108,44 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
 
               // Requests list
               Expanded(
-                child: filteredRequests.isEmpty
-                    ? Center(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _db.getRequestsStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 64, color: AppColors.white.withOpacity(0.7)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading requests: ${snapshot.error}',
+                              style: TextStyle(
+                                color: AppColors.white.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final allRequests = snapshot.data ?? [];
+                    final filteredRequests = selectedStatus == null
+                        ? allRequests
+                        : allRequests.where((r) => r['status'] == selectedStatus).toList();
+
+                    if (filteredRequests.isEmpty) {
+                      return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -126,15 +165,19 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                             ),
                           ],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: filteredRequests.length,
-                        itemBuilder: (context, index) {
-                          final request = filteredRequests[filteredRequests.length - 1 - index];
-                          return _buildRequestCard(context, request);
-                        },
-                      ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: filteredRequests.length,
+                      itemBuilder: (context, index) {
+                        final request = filteredRequests[index];
+                        return _buildRequestCard(context, request);
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -143,7 +186,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
     );
   }
 
-  Widget _buildRequestCard(BuildContext context, Map<String, String> request) {
+  Widget _buildRequestCard(BuildContext context, Map<String, dynamic> request) {
     final statusColor = request['status'] == 'Pending'
         ? Colors.orange
         : request['status'] == 'Approved'
@@ -178,7 +221,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          request['type'] ?? 'Request',
+                          request['type']?.toString() ?? 'Request',
                           style: const TextStyle(
                             color: Colors.black87,
                             fontSize: 16,
@@ -187,7 +230,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'From: ${request['fullName'] ?? 'Unknown'}',
+                          'From: ${request['fullName']?.toString() ?? 'Unknown'}',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -203,7 +246,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      request['status'] ?? 'Pending',
+                      request['status']?.toString() ?? 'Pending',
                       style: TextStyle(
                         color: statusColor,
                         fontSize: 11,
@@ -213,12 +256,12 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                   ),
                 ],
               ),
-              if (request['purpose'] != null && request['purpose']!.isNotEmpty) ...[
+              if (request['purpose'] != null && request['purpose'].toString().isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  (request['purpose']?.length ?? 0) > 100
-                      ? '${request['purpose']!.substring(0, 100)}...'
-                      : request['purpose'] ?? '',
+                  (request['purpose']?.toString().length ?? 0) > 100
+                      ? '${request['purpose'].toString().substring(0, 100)}...'
+                      : request['purpose']?.toString() ?? '',
                   style: TextStyle(
                     color: Colors.grey[700],
                     fontSize: 13,
@@ -236,7 +279,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                       Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
                       Text(
-                        _formatDate(request['date'] ?? ''),
+                        _formatDate(request['createdAt']),
                         style: TextStyle(
                           color: Colors.grey[500],
                           fontSize: 11,
@@ -247,7 +290,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                   Row(
                     children: [
                       Text(
-                        '#${request['id']?.substring(0, 8) ?? "N/A"}',
+                        '#${request['id']?.toString().substring(0, 8) ?? "N/A"}',
                         style: TextStyle(
                           color: AppColors.primaryOrange,
                           fontSize: 11,
@@ -267,7 +310,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
     );
   }
 
-  void _showRequestDetails(BuildContext context, Map<String, String> request) {
+  void _showRequestDetails(BuildContext context, Map<String, dynamic> request) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -316,16 +359,16 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                 ],
               ),
               const SizedBox(height: 24),
-              _buildDetailRow('Type', request['type'] ?? 'N/A', Icons.category),
+              _buildDetailRow('Type', request['type']?.toString() ?? 'N/A', Icons.category),
               const SizedBox(height: 16),
-              _buildDetailRow('Status', request['status'] ?? 'Pending', Icons.info),
+              _buildDetailRow('Status', request['status']?.toString() ?? 'Pending', Icons.info),
               const SizedBox(height: 16),
-              _buildDetailRow('Requested by', request['fullName'] ?? 'Unknown', Icons.person),
+              _buildDetailRow('Requested by', request['fullName']?.toString() ?? 'Unknown', Icons.person),
               const SizedBox(height: 16),
-              _buildDetailRow('Date', _formatDate(request['date'] ?? ''), Icons.calendar_today),
+              _buildDetailRow('Date', _formatDate(request['createdAt']), Icons.calendar_today),
               const SizedBox(height: 16),
-              _buildDetailRow('Reference', '#${request['id']?.substring(0, 12) ?? "N/A"}', Icons.tag),
-              if (request['purpose'] != null && request['purpose']!.isNotEmpty) ...[
+              _buildDetailRow('Reference', '#${request['id']?.toString().substring(0, 12) ?? "N/A"}', Icons.tag),
+              if (request['purpose'] != null && request['purpose'].toString().isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
                   'Purpose',
@@ -343,7 +386,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    request['purpose'] ?? '',
+                    request['purpose']?.toString() ?? '',
                     style: TextStyle(
                       color: Colors.black87,
                       fontSize: 14,
@@ -352,10 +395,10 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                   ),
                 ),
               ],
-              if (request['details'] != null && request['details']!.isNotEmpty) ...[
+              if (request['proofUrl'] != null && request['proofUrl'].toString().isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
-                  'Additional Details',
+                  'Proof Document',
                   style: TextStyle(
                     color: AppColors.primaryOrange,
                     fontSize: 14,
@@ -363,19 +406,28 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.lightGrey,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    request['details'] ?? '',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    request['proofUrl'].toString(),
+                    height: 200,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 200,
+                        color: Colors.grey[300],
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.broken_image, color: Colors.grey[600], size: 48),
+                              const SizedBox(height: 8),
+                              Text('Failed to load image', style: TextStyle(color: Colors.grey[600])),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -394,16 +446,28 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      DataService.instance.updateRequestStatus(request['id'] ?? '', 'Approved');
-                      Navigator.pop(context);
-                      setState(() {});
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Request approved'),
-                          backgroundColor: AppColors.brightGreen,
-                        ),
-                      );
+                    onPressed: () async {
+                      try {
+                        await _db.updateRequestStatus(request['id'].toString(), 'Approved');
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Request approved'),
+                              backgroundColor: AppColors.brightGreen,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: AppColors.accentRed,
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.check_circle),
                     label: const Text('Approve Request'),
@@ -420,16 +484,28 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      DataService.instance.updateRequestStatus(request['id'] ?? '', 'Rejected');
-                      Navigator.pop(context);
-                      setState(() {});
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Request rejected'),
-                          backgroundColor: AppColors.accentRed,
-                        ),
-                      );
+                    onPressed: () async {
+                      try {
+                        await _db.updateRequestStatus(request['id'].toString(), 'Rejected');
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Request rejected'),
+                              backgroundColor: AppColors.accentRed,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: AppColors.accentRed,
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.cancel),
                     label: const Text('Reject Request'),
@@ -457,7 +533,7 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'This request has been ${request['status']?.toLowerCase()}',
+                          'This request has been ${request['status']?.toString().toLowerCase()}',
                           style: TextStyle(
                             color: request['status'] == 'Approved' ? Colors.green : Colors.red,
                             fontSize: 14,
@@ -511,18 +587,32 @@ class _RequestsOfficialPageState extends State<RequestsOfficialPage> {
     );
   }
 
-  String _formatDate(String isoDate) {
-    if (isoDate.isEmpty) return 'Unknown date';
+  String _formatDate(dynamic date) {
+    if (date == null) return 'Unknown date';
     try {
-      final date = DateTime.parse(isoDate);
+      DateTime dateTime;
+      if (date is DateTime) {
+        dateTime = date;
+      } else if (date is Map) {
+        // Firestore Timestamp
+        final seconds = date['_seconds'] as int?;
+        if (seconds != null) {
+          dateTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+        } else {
+          return 'Unknown date';
+        }
+      } else {
+        return 'Unknown date';
+      }
+      
       final now = DateTime.now();
-      final difference = now.difference(date);
+      final difference = now.difference(dateTime);
 
       if (difference.inMinutes < 1) return 'Just now';
       if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
       if (difference.inHours < 24) return '${difference.inHours}h ago';
       if (difference.inDays < 7) return '${difference.inDays}d ago';
-      return '${date.day}/${date.month}/${date.year}';
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     } catch (e) {
       return 'Unknown date';
     }
