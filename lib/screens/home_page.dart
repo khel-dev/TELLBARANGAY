@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/database.dart';
@@ -121,7 +122,12 @@ class HomePage extends StatelessWidget {
                                           title: Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
-                                              const Text('Notifications'),
+                                              Expanded(
+                                                child: const Text(
+                                                  'Notifications',
+                                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                                                ),
+                                              ),
                                               TextButton(
                                                 onPressed: () async {
                                                   // Mark all as read
@@ -136,8 +142,12 @@ class HomePage extends StatelessWidget {
                                               ),
                                             ],
                                           ),
-                                          content: SizedBox(
-                                            width: double.maxFinite,
+                                          content: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              // Limit width and height so dialog doesn't overflow
+                                              maxWidth: MediaQuery.of(context).size.width * 0.9,
+                                              maxHeight: MediaQuery.of(context).size.height * 0.6,
+                                            ),
                                             child: ListView.builder(
                                               shrinkWrap: true,
                                               itemCount: notifications.length,
@@ -168,15 +178,20 @@ class HomePage extends StatelessWidget {
                                                                   fontSize: 13,
                                                                   fontWeight: !isRead ? FontWeight.w600 : FontWeight.normal,
                                                                 ),
+                                                                softWrap: true,
+                                                                overflow: TextOverflow.visible,
                                                               ),
                                                             ),
                                                             if (!isRead)
-                                                              Container(
-                                                                width: 8,
-                                                                height: 8,
-                                                                decoration: const BoxDecoration(
-                                                                  color: Colors.blue,
-                                                                  shape: BoxShape.circle,
+                                                              Padding(
+                                                                padding: const EdgeInsets.only(left: 8.0),
+                                                                child: Container(
+                                                                  width: 8,
+                                                                  height: 8,
+                                                                  decoration: const BoxDecoration(
+                                                                    color: Colors.blue,
+                                                                    shape: BoxShape.circle,
+                                                                  ),
                                                                 ),
                                                               ),
                                                           ],
@@ -426,14 +441,19 @@ class HomePage extends StatelessWidget {
       DateTime dateTime;
       if (date is DateTime) {
         dateTime = date;
-      } else if (date is Map) {
-        // Firestore Timestamp
+      } else if (date is Map && date.containsKey('_seconds')) {
+        // Serialized Firestore Timestamp map
         final seconds = date['_seconds'] as int?;
         if (seconds != null) {
           dateTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
         } else {
           return 'Just now';
         }
+      } else if (date is Timestamp) {
+        dateTime = date.toDate();
+      } else if (date is String) {
+        // ISO string fallback
+        dateTime = DateTime.tryParse(date) ?? DateTime.now();
       } else {
         return 'Just now';
       }

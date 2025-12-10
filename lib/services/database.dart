@@ -32,7 +32,7 @@ class DatabaseService {
     }
   }
 
-  /// Create user profile in Firestore after Firebase Auth signup
+  /// maghimo syag user profile sa Firestore otomatik!!!
   Future<void> createUserProfile({
     required String uid,
     required String name,
@@ -454,14 +454,52 @@ class DatabaseService {
       return _db
           .collection('notifications')
           .where('toUid', isEqualTo: uid)
-          .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          final data = doc.data();
+        final items = snapshot.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
           data['id'] = doc.id;
           return data;
         }).toList();
+
+        // Sort client-side by createdAt (descending) to avoid index issues
+        items.sort((a, b) {
+          DateTime? aTime;
+          DateTime? bTime;
+
+          final aCreated = a['createdAt'];
+          final bCreated = b['createdAt'];
+
+          if (aCreated is Map && aCreated.containsKey('_seconds')) {
+            aTime = DateTime.fromMillisecondsSinceEpoch((aCreated['_seconds'] as int) * 1000);
+          } else if (aCreated is DateTime) {
+            aTime = aCreated;
+          } else if (aCreated != null) {
+            try {
+              // Timestamp from cloud_firestore
+              final seconds = (aCreated as dynamic).seconds as int?;
+              if (seconds != null) aTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+            } catch (_) {}
+          }
+
+          if (bCreated is Map && bCreated.containsKey('_seconds')) {
+            bTime = DateTime.fromMillisecondsSinceEpoch((bCreated['_seconds'] as int) * 1000);
+          } else if (bCreated is DateTime) {
+            bTime = bCreated;
+          } else if (bCreated != null) {
+            try {
+              final seconds = (bCreated as dynamic).seconds as int?;
+              if (seconds != null) bTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+            } catch (_) {}
+          }
+
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return bTime.compareTo(aTime);
+        });
+
+        return items;
       });
     } catch (e) {
       throw Exception('Error fetching notifications: $e');
