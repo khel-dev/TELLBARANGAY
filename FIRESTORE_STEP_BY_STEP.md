@@ -227,3 +227,4 @@ Firestore Database
 **Remember:** Collections are created automatically when your app writes data. You only need to create them manually if you want to see the structure first!
 
 
+

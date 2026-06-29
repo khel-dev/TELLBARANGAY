@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_colors.dart';
 import '../services/auth_service.dart';
-import '../services/database.dart';
+import '../services/data_service.dart';
 
 class ReportAnIssuePage extends StatefulWidget {
   const ReportAnIssuePage({Key? key}) : super(key: key);
@@ -15,11 +12,9 @@ class ReportAnIssuePage extends StatefulWidget {
 
 class _ReportAnIssuePageState extends State<ReportAnIssuePage> {
   final TextEditingController descriptionController = TextEditingController();
-  final TextEditingController titleController = TextEditingController();
   String? selectedCategory;
   bool isSubmitting = false;
-  List<File> selectedImages = [];
-  final ImagePicker _imagePicker = ImagePicker();
+  String? uploadedMedia;
 
   final List<String> categories = [
     'Garbage',
@@ -34,82 +29,13 @@ class _ReportAnIssuePageState extends State<ReportAnIssuePage> {
   @override
   void dispose() {
     descriptionController.dispose();
-    titleController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        setState(() {
-          selectedImages.add(File(image.path));
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking image: $e'),
-          backgroundColor: AppColors.accentRed,
-        ),
-      );
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        setState(() {
-          selectedImages.add(File(image.path));
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error taking photo: $e'),
-          backgroundColor: AppColors.accentRed,
-        ),
-      );
-    }
-  }
-
-  void _removeImage(int index) {
-    setState(() {
-      selectedImages.removeAt(index);
-    });
-  }
-
   void _submitReport() async {
-    final title = titleController.text.trim();
     final description = descriptionController.text.trim();
-    final currentUid = AuthService.instance.currentUid;
-
-    if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please login first'),
-          backgroundColor: AppColors.accentRed,
-        ),
-      );
-      return;
-    }
-
-    if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please enter a title'),
-          backgroundColor: AppColors.accentRed,
-        ),
-      );
-      return;
-    }
+    final currentUser = AuthService.instance.currentUser;
+    final userName = currentUser?['name'] ?? 'Anonymous';
 
     if (selectedCategory == null || selectedCategory!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -132,57 +58,23 @@ class _ReportAnIssuePageState extends State<ReportAnIssuePage> {
     }
 
     setState(() => isSubmitting = true);
+    await Future.delayed(const Duration(milliseconds: 800));
 
-    try {
-      final db = DatabaseService.instance;
-      
-      // Create report first to get reportId
-      final reportId = await db.createReport(
-        title: title,
-        description: description,
-        category: selectedCategory!,
-        photoUrls: [], // Will update after upload
-        createdBy: currentUid,
+    DataService.instance.submitReport(selectedCategory!, description, userName);
+
+    if (mounted) {
+      setState(() => isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Report submitted successfully!'),
+          backgroundColor: AppColors.brightGreen,
+        ),
       );
-
-      // Upload images if any
-      List<String> photoUrls = [];
-      if (selectedImages.isNotEmpty) {
-        photoUrls = await db.uploadReportImages(
-          imageFiles: selectedImages,
-          reportId: reportId,
-        );
-        
-        // Update report with photo URLs
-        await FirebaseFirestore.instance.collection('reports').doc(reportId).update({
-          'photos': photoUrls,
-        });
-      }
-
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Report submitted successfully!'),
-            backgroundColor: AppColors.brightGreen,
-          ),
-        );
-        Future.delayed(const Duration(milliseconds: 800), () {
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error submitting report: $e'),
-            backgroundColor: AppColors.accentRed,
-          ),
-        );
-      }
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      });
     }
   }
 
@@ -242,33 +134,6 @@ class _ReportAnIssuePageState extends State<ReportAnIssuePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title Section
-                      const Text(
-                        'Title',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: TextField(
-                          controller: titleController,
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.title, color: AppColors.primaryOrange),
-                            hintText: 'Enter report title',
-                            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
                       // Category Section
                       const Text(
                         'Category',
@@ -286,10 +151,9 @@ class _ReportAnIssuePageState extends State<ReportAnIssuePage> {
                         ),
                         child: DropdownButtonFormField<String>(
                           value: selectedCategory,
-                          isExpanded: true,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.label_outline, color: AppColors.primaryOrange),
-                            hintText: 'Select category',
+                            hintText: 'Select category (Garbage, Noise, Water, etc.)',
                             hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -382,123 +246,65 @@ class _ReportAnIssuePageState extends State<ReportAnIssuePage> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _pickImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: AppColors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: AppColors.brightBlue,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.photo_library, color: AppColors.brightBlue, size: 24),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Gallery',
-                                      style: TextStyle(
-                                        color: Colors.black87,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            uploadedMedia = 'evidence_photo.jpg';
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.brightBlue,
+                              width: 1,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _takePhoto,
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: AppColors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: AppColors.brightGreen,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.camera_alt, color: AppColors.brightGreen, size: 24),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Camera',
-                                      style: TextStyle(
-                                        color: Colors.black87,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
+                          child: Row(
+                            children: [
+                              Icon(Icons.camera_alt, color: AppColors.brightBlue, size: 24),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Tap to add evidence',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Attach clear photos of the concern.',
+                        'Attach clear photos or a short video of the concern.',
                         style: TextStyle(
                           color: AppColors.paleOrange,
                           fontSize: 11,
                         ),
                       ),
-                      if (selectedImages.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 100,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: selectedImages.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.file(
-                                        selectedImages[index],
-                                        width: 100,
-                                        height: 100,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: GestureDetector(
-                                        onTap: () => _removeImage(index),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.close,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                      if (uploadedMedia != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                uploadedMedia!,
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 12,
                                 ),
-                              );
-                            },
+                              ),
+                            ],
                           ),
                         ),
                       ],

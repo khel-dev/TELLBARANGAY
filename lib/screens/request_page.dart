@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_colors.dart';
-import '../services/database.dart';
+import '../services/data_service.dart';
 import '../services/auth_service.dart';
 
 class RequestPage extends StatefulWidget {
@@ -248,9 +245,7 @@ class BarangayClearanceForm extends StatefulWidget {
 class _BarangayClearanceFormState extends State<BarangayClearanceForm> {
   final fullNameController = TextEditingController();
   final purposeController = TextEditingController();
-  File? uploadedFile;
-  final ImagePicker _imagePicker = ImagePicker();
-  bool isSubmitting = false;
+  String? uploadedFile;
 
   @override
   void dispose() {
@@ -259,110 +254,29 @@ class _BarangayClearanceFormState extends State<BarangayClearanceForm> {
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        setState(() {
-          uploadedFile = File(image.path);
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        setState(() {
-          uploadedFile = File(image.path);
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking photo: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _submit() async {
+  void _submit() {
     if (fullNameController.text.isEmpty || purposeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Please fill all required fields'), backgroundColor: AppColors.accentRed),
       );
       return;
     }
-
-    final currentUid = AuthService.instance.currentUid;
-    if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please login first'), backgroundColor: AppColors.accentRed),
-      );
-      return;
-    }
-
-    setState(() => isSubmitting = true);
-
-    try {
-      final db = DatabaseService.instance;
-      
-      // Create request first to get requestId
-      final requestId = await db.createRequest(
-        type: 'Barangay Clearance',
-        purpose: purposeController.text,
-        fullName: fullNameController.text,
-        proofUrl: '', // Will update after upload
-        createdBy: currentUid,
-      );
-
-      // Upload proof image if any
-      if (uploadedFile != null) {
-        try {
-          final proofUrl = await db.uploadProofImage(
-            imageFile: uploadedFile!,
-            requestId: requestId,
-          );
-          
-          // Update request with proof URL
-          await FirebaseFirestore.instance.collection('requests').doc(requestId).update({
-            'proofUrl': proofUrl,
-          });
-        } catch (e) {
-          // If upload fails, still keep the request but without proof
-          print('Warning: Failed to upload proof image: $e');
-        }
-      }
     
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
-        );
-        
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            widget.onBack();
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e'), backgroundColor: AppColors.accentRed),
-        );
-      }
-    }
+    final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
+    DataService.instance.submitRequest(
+      'Barangay Clearance',
+      userName,
+      fullNameController.text,
+      purposeController.text,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
+    );
+    
+    Future.delayed(const Duration(milliseconds: 500), () {
+      widget.onBack();
+    });
   }
 
   @override
@@ -396,60 +310,15 @@ class _BarangayClearanceFormState extends State<BarangayClearanceForm> {
                       _buildTextField(purposeController, 'For employment application', Icons.description, maxLines: 3),
                       const SizedBox(height: 16),
                       _buildLabel('Upload supporting document'),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildFileUpload(_pickFile, 'Gallery'),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildFileUpload(_takePhoto, 'Camera'),
-                          ),
-                        ],
-                      ),
-                      if (uploadedFile != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.brightGreen.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'File selected: ${uploadedFile!.path.split('/').last}',
-                                  style: TextStyle(color: AppColors.primaryOrange, fontSize: 12),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => setState(() => uploadedFile = null),
-                                child: Icon(Icons.close, color: AppColors.accentRed, size: 20),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      _buildFileUpload(() => setState(() => uploadedFile = 'barangay_clearance.pdf')),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: isSubmitting ? null : _submit,
+                          onPressed: _submit,
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513)),
-                          child: isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
-                                  ),
-                                )
-                              : const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                          child: const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],
@@ -477,9 +346,7 @@ class _CertificationFormState extends State<CertificationForm> {
   final fullNameController = TextEditingController();
   final purposeController = TextEditingController();
   String certificationType = 'Residency';
-  File? uploadedFile;
-  final ImagePicker _imagePicker = ImagePicker();
-  bool isSubmitting = false;
+  String? uploadedFile;
 
   @override
   void dispose() {
@@ -488,79 +355,29 @@ class _CertificationFormState extends State<CertificationForm> {
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking photo: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _submit() async {
+  void _submit() {
     if (fullNameController.text.isEmpty || purposeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Please fill all required fields'), backgroundColor: AppColors.accentRed),
       );
       return;
     }
-
-    final currentUid = AuthService.instance.currentUid;
-    if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please login first'), backgroundColor: AppColors.accentRed),
-      );
-      return;
-    }
-
-    setState(() => isSubmitting = true);
-
-    try {
-      final db = DatabaseService.instance;
-      final requestId = await db.createRequest(
-        type: 'Certification - $certificationType',
-        purpose: purposeController.text,
-        fullName: fullNameController.text,
-        proofUrl: '',
-        createdBy: currentUid,
-      );
-
-      String proofUrl = '';
-      if (uploadedFile != null) {
-        proofUrl = await db.uploadProofImage(imageFile: uploadedFile!, requestId: requestId);
-        await FirebaseFirestore.instance.collection('requests').doc(requestId).update({'proofUrl': proofUrl});
-      }
     
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
-        );
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) widget.onBack();
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e'), backgroundColor: AppColors.accentRed),
-        );
-      }
-    }
+    final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
+    DataService.instance.submitRequest(
+      'Certification',
+      userName,
+      fullNameController.text,
+      purposeController.text,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
+    );
+    
+    Future.delayed(const Duration(milliseconds: 500), () {
+      widget.onBack();
+    });
   }
 
   @override
@@ -601,38 +418,15 @@ class _CertificationFormState extends State<CertificationForm> {
                       _buildTextField(purposeController, 'Describe the purpose', Icons.description, maxLines: 3),
                       const SizedBox(height: 16),
                       _buildLabel('Upload supporting document'),
-                      Row(
-                        children: [
-                          Expanded(child: _buildFileUpload(_pickFile, 'Gallery')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildFileUpload(_takePhoto, 'Camera')),
-                        ],
-                      ),
-                      if (uploadedFile != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppColors.brightGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text('File selected: ${uploadedFile!.path.split('/').last}', style: TextStyle(color: AppColors.primaryOrange, fontSize: 12))),
-                              GestureDetector(onTap: () => setState(() => uploadedFile = null), child: Icon(Icons.close, color: AppColors.accentRed, size: 20)),
-                            ],
-                          ),
-                        ),
-                      ],
+                      _buildFileUpload(() => setState(() => uploadedFile = 'certification_doc.pdf')),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: isSubmitting ? null : _submit,
+                          onPressed: _submit,
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513)),
-                          child: isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.white)))
-                              : const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                          child: const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],
@@ -661,10 +455,8 @@ class _BarangayIDFormState extends State<BarangayIDForm> {
   final addressController = TextEditingController();
   final contactController = TextEditingController();
   String? dob;
-  File? uploadedPhoto;
-  File? uploadedDoc;
-  final ImagePicker _imagePicker = ImagePicker();
-  bool isSubmitting = false;
+  String? uploadedPhoto;
+  String? uploadedDoc;
 
   @override
   void dispose() {
@@ -674,104 +466,29 @@ class _BarangayIDFormState extends State<BarangayIDForm> {
     super.dispose();
   }
 
-  Future<void> _pickPhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-      if (image != null) setState(() => uploadedPhoto = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking photo: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 85);
-      if (image != null) setState(() => uploadedPhoto = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking photo: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _pickDoc() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-      if (image != null) setState(() => uploadedDoc = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking document: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _takeDoc() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 85);
-      if (image != null) setState(() => uploadedDoc = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking document: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _submit() async {
+  void _submit() {
     if (fullNameController.text.isEmpty || addressController.text.isEmpty || contactController.text.isEmpty || dob == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Please fill all required fields'), backgroundColor: AppColors.accentRed),
       );
       return;
     }
-
-    final currentUid = AuthService.instance.currentUid;
-    if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please login first'), backgroundColor: AppColors.accentRed),
-      );
-      return;
-    }
-
-    setState(() => isSubmitting = true);
-
-    try {
-      final db = DatabaseService.instance;
-      final requestId = await db.createRequest(
-        type: 'Barangay ID',
-        purpose: 'DOB: $dob, Address: ${addressController.text}',
-        fullName: fullNameController.text,
-        proofUrl: '',
-        createdBy: currentUid,
-      );
-
-      String proofUrl = '';
-      if (uploadedPhoto != null) {
-        proofUrl = await db.uploadProofImage(imageFile: uploadedPhoto!, requestId: requestId);
-        await FirebaseFirestore.instance.collection('requests').doc(requestId).update({'proofUrl': proofUrl});
-      } else if (uploadedDoc != null) {
-        proofUrl = await db.uploadProofImage(imageFile: uploadedDoc!, requestId: requestId);
-        await FirebaseFirestore.instance.collection('requests').doc(requestId).update({'proofUrl': proofUrl});
-      }
     
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
-        );
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) widget.onBack();
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e'), backgroundColor: AppColors.accentRed),
-        );
-      }
-    }
+    final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
+    DataService.instance.submitRequest(
+      'Barangay ID',
+      userName,
+      fullNameController.text,
+      'DOB: $dob, Address: ${addressController.text}',
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
+    );
+    
+    Future.delayed(const Duration(milliseconds: 500), () {
+      widget.onBack();
+    });
   }
 
   @override
@@ -827,62 +544,18 @@ class _BarangayIDFormState extends State<BarangayIDForm> {
                       _buildTextField(contactController, '09XX XXX XXXX', Icons.phone),
                       const SizedBox(height: 16),
                       _buildLabel('Upload 1x1 or 2x2 photo'),
-                      Row(
-                        children: [
-                          Expanded(child: _buildFileUpload(_pickPhoto, 'Gallery')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildFileUpload(_takePhoto, 'Camera')),
-                        ],
-                      ),
-                      if (uploadedPhoto != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppColors.brightGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text('Photo: ${uploadedPhoto!.path.split('/').last}', style: TextStyle(color: AppColors.primaryOrange, fontSize: 12))),
-                              GestureDetector(onTap: () => setState(() => uploadedPhoto = null), child: Icon(Icons.close, color: AppColors.accentRed, size: 20)),
-                            ],
-                          ),
-                        ),
-                      ],
+                      _buildFileUpload(() => setState(() => uploadedPhoto = 'photo_id.jpg')),
                       const SizedBox(height: 16),
                       _buildLabel('Upload supporting documents'),
-                      Row(
-                        children: [
-                          Expanded(child: _buildFileUpload(_pickDoc, 'Gallery')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildFileUpload(_takeDoc, 'Camera')),
-                        ],
-                      ),
-                      if (uploadedDoc != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppColors.brightGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text('Document: ${uploadedDoc!.path.split('/').last}', style: TextStyle(color: AppColors.primaryOrange, fontSize: 12))),
-                              GestureDetector(onTap: () => setState(() => uploadedDoc = null), child: Icon(Icons.close, color: AppColors.accentRed, size: 20)),
-                            ],
-                          ),
-                        ),
-                      ],
+                      _buildFileUpload(() => setState(() => uploadedDoc = 'supporting_docs.pdf')),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: isSubmitting ? null : _submit,
+                          onPressed: _submit,
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513)),
-                          child: isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.white)))
-                              : const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                          child: const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],
@@ -911,9 +584,7 @@ class _PermitRequestFormState extends State<PermitRequestForm> {
   final businessNameController = TextEditingController();
   final purposeController = TextEditingController();
   String permitType = 'Business';
-  File? uploadedFile;
-  final ImagePicker _imagePicker = ImagePicker();
-  bool isSubmitting = false;
+  String? uploadedFile;
 
   @override
   void dispose() {
@@ -923,79 +594,29 @@ class _PermitRequestFormState extends State<PermitRequestForm> {
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking photo: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _submit() async {
+  void _submit() {
     if (fullNameController.text.isEmpty || businessNameController.text.isEmpty || purposeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Please fill all required fields'), backgroundColor: AppColors.accentRed),
       );
       return;
     }
-
-    final currentUid = AuthService.instance.currentUid;
-    if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please login first'), backgroundColor: AppColors.accentRed),
-      );
-      return;
-    }
-
-    setState(() => isSubmitting = true);
-
-    try {
-      final db = DatabaseService.instance;
-      final requestId = await db.createRequest(
-        type: 'Permit Request - $permitType',
-        purpose: purposeController.text,
-        fullName: businessNameController.text,
-        proofUrl: '',
-        createdBy: currentUid,
-      );
-
-      String proofUrl = '';
-      if (uploadedFile != null) {
-        proofUrl = await db.uploadProofImage(imageFile: uploadedFile!, requestId: requestId);
-        await FirebaseFirestore.instance.collection('requests').doc(requestId).update({'proofUrl': proofUrl});
-      }
     
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
-        );
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) widget.onBack();
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e'), backgroundColor: AppColors.accentRed),
-        );
-      }
-    }
+    final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
+    DataService.instance.submitRequest(
+      'Permit Request',
+      userName,
+      businessNameController.text,
+      purposeController.text,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
+    );
+    
+    Future.delayed(const Duration(milliseconds: 500), () {
+      widget.onBack();
+    });
   }
 
   @override
@@ -1039,38 +660,15 @@ class _PermitRequestFormState extends State<PermitRequestForm> {
                       _buildTextField(purposeController, 'Describe the purpose', Icons.description, maxLines: 3),
                       const SizedBox(height: 16),
                       _buildLabel('Upload required documents'),
-                      Row(
-                        children: [
-                          Expanded(child: _buildFileUpload(_pickFile, 'Gallery')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildFileUpload(_takePhoto, 'Camera')),
-                        ],
-                      ),
-                      if (uploadedFile != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppColors.brightGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text('File: ${uploadedFile!.path.split('/').last}', style: TextStyle(color: AppColors.primaryOrange, fontSize: 12))),
-                              GestureDetector(onTap: () => setState(() => uploadedFile = null), child: Icon(Icons.close, color: AppColors.accentRed, size: 20)),
-                            ],
-                          ),
-                        ),
-                      ],
+                      _buildFileUpload(() => setState(() => uploadedFile = 'permit_docs.pdf')),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: isSubmitting ? null : _submit,
+                          onPressed: _submit,
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513)),
-                          child: isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.white)))
-                              : const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                          child: const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],
@@ -1098,9 +696,7 @@ class _AssistanceRequestFormState extends State<AssistanceRequestForm> {
   final fullNameController = TextEditingController();
   final reasonController = TextEditingController();
   String assistanceType = 'Medical';
-  File? uploadedFile;
-  final ImagePicker _imagePicker = ImagePicker();
-  bool isSubmitting = false;
+  String? uploadedFile;
 
   @override
   void dispose() {
@@ -1109,79 +705,29 @@ class _AssistanceRequestFormState extends State<AssistanceRequestForm> {
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking photo: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _submit() async {
+  void _submit() {
     if (fullNameController.text.isEmpty || reasonController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Please fill all required fields'), backgroundColor: AppColors.accentRed),
       );
       return;
     }
-
-    final currentUid = AuthService.instance.currentUid;
-    if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please login first'), backgroundColor: AppColors.accentRed),
-      );
-      return;
-    }
-
-    setState(() => isSubmitting = true);
-
-    try {
-      final db = DatabaseService.instance;
-      final requestId = await db.createRequest(
-        type: 'Request for Assistance - $assistanceType',
-        purpose: reasonController.text,
-        fullName: fullNameController.text,
-        proofUrl: '',
-        createdBy: currentUid,
-      );
-
-      String proofUrl = '';
-      if (uploadedFile != null) {
-        proofUrl = await db.uploadProofImage(imageFile: uploadedFile!, requestId: requestId);
-        await FirebaseFirestore.instance.collection('requests').doc(requestId).update({'proofUrl': proofUrl});
-      }
     
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
-        );
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) widget.onBack();
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e'), backgroundColor: AppColors.accentRed),
-        );
-      }
-    }
+    final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
+    DataService.instance.submitRequest(
+      'Request for Assistance',
+      userName,
+      fullNameController.text,
+      reasonController.text,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
+    );
+    
+    Future.delayed(const Duration(milliseconds: 500), () {
+      widget.onBack();
+    });
   }
 
   @override
@@ -1222,38 +768,15 @@ class _AssistanceRequestFormState extends State<AssistanceRequestForm> {
                       _buildTextField(reasonController, 'Explain why you are requesting assistance', Icons.description, maxLines: 3),
                       const SizedBox(height: 16),
                       _buildLabel('Upload proof or supporting document'),
-                      Row(
-                        children: [
-                          Expanded(child: _buildFileUpload(_pickFile, 'Gallery')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildFileUpload(_takePhoto, 'Camera')),
-                        ],
-                      ),
-                      if (uploadedFile != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppColors.brightGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text('File: ${uploadedFile!.path.split('/').last}', style: TextStyle(color: AppColors.primaryOrange, fontSize: 12))),
-                              GestureDetector(onTap: () => setState(() => uploadedFile = null), child: Icon(Icons.close, color: AppColors.accentRed, size: 20)),
-                            ],
-                          ),
-                        ),
-                      ],
+                      _buildFileUpload(() => setState(() => uploadedFile = 'proof_doc.pdf')),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: isSubmitting ? null : _submit,
+                          onPressed: _submit,
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513)),
-                          child: isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.white)))
-                              : const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                          child: const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],
@@ -1281,9 +804,7 @@ class _OtherRequestFormState extends State<OtherRequestForm> {
   final fullNameController = TextEditingController();
   final requestTypeController = TextEditingController();
   final detailsController = TextEditingController();
-  File? uploadedFile;
-  final ImagePicker _imagePicker = ImagePicker();
-  bool isSubmitting = false;
+  String? uploadedFile;
 
   @override
   void dispose() {
@@ -1293,79 +814,29 @@ class _OtherRequestFormState extends State<OtherRequestForm> {
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 85);
-      if (image != null) setState(() => uploadedFile = File(image.path));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking photo: $e'), backgroundColor: AppColors.accentRed),
-      );
-    }
-  }
-
-  Future<void> _submit() async {
+  void _submit() {
     if (fullNameController.text.isEmpty || requestTypeController.text.isEmpty || detailsController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Please fill all required fields'), backgroundColor: AppColors.accentRed),
       );
       return;
     }
-
-    final currentUid = AuthService.instance.currentUid;
-    if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please login first'), backgroundColor: AppColors.accentRed),
-      );
-      return;
-    }
-
-    setState(() => isSubmitting = true);
-
-    try {
-      final db = DatabaseService.instance;
-      final requestId = await db.createRequest(
-        type: 'Other Request - ${requestTypeController.text}',
-        purpose: detailsController.text,
-        fullName: fullNameController.text,
-        proofUrl: '',
-        createdBy: currentUid,
-      );
-
-      String proofUrl = '';
-      if (uploadedFile != null) {
-        proofUrl = await db.uploadProofImage(imageFile: uploadedFile!, requestId: requestId);
-        await FirebaseFirestore.instance.collection('requests').doc(requestId).update({'proofUrl': proofUrl});
-      }
     
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
-        );
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) widget.onBack();
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e'), backgroundColor: AppColors.accentRed),
-        );
-      }
-    }
+    final userName = AuthService.instance.currentUser?['name'] ?? 'Unknown';
+    DataService.instance.submitRequest(
+      'Other Request',
+      userName,
+      requestTypeController.text,
+      detailsController.text,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('Request submitted successfully!'), backgroundColor: AppColors.brightGreen),
+    );
+    
+    Future.delayed(const Duration(milliseconds: 500), () {
+      widget.onBack();
+    });
   }
 
   @override
@@ -1402,38 +873,15 @@ class _OtherRequestFormState extends State<OtherRequestForm> {
                       _buildTextField(detailsController, 'Provide details or description', Icons.description, maxLines: 3),
                       const SizedBox(height: 16),
                       _buildLabel('Upload proof or supporting document'),
-                      Row(
-                        children: [
-                          Expanded(child: _buildFileUpload(_pickFile, 'Gallery')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildFileUpload(_takePhoto, 'Camera')),
-                        ],
-                      ),
-                      if (uploadedFile != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppColors.brightGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.brightGreen, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text('File: ${uploadedFile!.path.split('/').last}', style: TextStyle(color: AppColors.primaryOrange, fontSize: 12))),
-                              GestureDetector(onTap: () => setState(() => uploadedFile = null), child: Icon(Icons.close, color: AppColors.accentRed, size: 20)),
-                            ],
-                          ),
-                        ),
-                      ],
+                      _buildFileUpload(() => setState(() => uploadedFile = 'supporting_doc.pdf')),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: isSubmitting ? null : _submit,
+                          onPressed: _submit,
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513)),
-                          child: isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.white)))
-                              : const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                          child: const Text('Submit Request', style: TextStyle(color: AppColors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],
@@ -1506,7 +954,7 @@ Widget _buildDropdown({
   );
 }
 
-Widget _buildFileUpload(VoidCallback onTap, String label) {
+Widget _buildFileUpload(VoidCallback onTap) {
   return GestureDetector(
     onTap: onTap,
     child: Container(
@@ -1515,19 +963,14 @@ Widget _buildFileUpload(VoidCallback onTap, String label) {
         borderRadius: BorderRadius.circular(10),
         color: AppColors.lightGrey,
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            label == 'Camera' ? Icons.camera_alt : Icons.photo_library,
-            color: AppColors.primaryOrange,
-            size: 28,
-          ),
-          const SizedBox(height: 4),
+          Icon(Icons.cloud_upload, color: AppColors.primaryOrange, size: 32),
+          const SizedBox(height: 8),
           Text(
-            label,
-            style: TextStyle(color: AppColors.primaryOrange, fontWeight: FontWeight.w500, fontSize: 12),
+            'Attach file (PDF, JPG)',
+            style: TextStyle(color: AppColors.primaryOrange, fontWeight: FontWeight.w500),
           ),
         ],
       ),

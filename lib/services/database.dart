@@ -16,7 +16,7 @@ class DatabaseService {
   static DatabaseService get instance => _instance;
 
   // ============ USER OPERATIONS ============
-  /// Check if username already exists
+  /// Check if username already exists in Firestore
   Future<bool> checkUsernameExists(String username) async {
     try {
       final snapshot = await _db
@@ -26,13 +26,11 @@ class DatabaseService {
           .get();
       return snapshot.docs.isNotEmpty;
     } catch (e) {
-      // If error occurs, assume username doesn't exist to allow registration
-      print('Error checking username: $e');
-      return false;
+      throw Exception('Error checking username: $e');
     }
   }
 
-  /// maghimo syag user profile sa Firestore otomatik!!!
+  /// Create user profile in Firestore after Firebase Auth signup
   Future<void> createUserProfile({
     required String uid,
     required String name,
@@ -50,9 +48,9 @@ class DatabaseService {
         'uid': uid,
         'name': name,
         'email': email,
-        'username': username ?? '',
         'role': role,
         'position': position ?? '',
+        'username': username ?? '',
         'address': address ?? '',
         'contact': contact ?? '',
         'barangay': barangay ?? '',
@@ -144,41 +142,22 @@ class DatabaseService {
 
   /// Get reports for a specific user
   Stream<List<Map<String, dynamic>>> getUserReportsStream(String uid) {
-    // Try with orderBy first, fallback to manual sorting if index doesn't exist
-    return _db
-        .collection('reports')
-        .where('createdBy', isEqualTo: uid)
-        .snapshots()
-        .map((snapshot) {
-      final reports = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-      
-      // Sort manually by createdAt (descending)
-      reports.sort((a, b) {
-        final aTime = a['createdAt'];
-        final bTime = b['createdAt'];
-        if (aTime == null || bTime == null) return 0;
-        
-        // Handle Firestore Timestamp
-        if (aTime is Map && bTime is Map) {
-          final aSec = aTime['_seconds'] as int? ?? 0;
-          final bSec = bTime['_seconds'] as int? ?? 0;
-          return bSec.compareTo(aSec); // Descending
-        }
-        
-        // Handle DateTime
-        if (aTime is DateTime && bTime is DateTime) {
-          return bTime.compareTo(aTime);
-        }
-        
-        return 0;
+    try {
+      return _db
+          .collection('reports')
+          .where('createdBy', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
       });
-      
-      return reports;
-    });
+    } catch (e) {
+      throw Exception('Error fetching user reports: $e');
+    }
   }
 
   /// Get a single report
@@ -203,24 +182,6 @@ class DatabaseService {
         'status': newStatus,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-
-      // Create notification for the report owner
-      final report = await getReport(reportId);
-      if (report != null) {
-        String message = '';
-        if (newStatus == 'In Progress') {
-          message = 'Your report "${report['title'] ?? 'Report'}" is now being processed by the barangay office.';
-        } else if (newStatus == 'Solved') {
-          message = 'Great news! Your report "${report['title'] ?? 'Report'}" has been resolved.';
-        }
-        if (message.isNotEmpty) {
-          await createNotification(
-            toUid: report['createdBy'],
-            message: message,
-            type: 'report_update',
-          );
-        }
-      }
     } catch (e) {
       throw Exception('Error updating report status: $e');
     }
@@ -284,41 +245,22 @@ class DatabaseService {
 
   /// Get requests for a specific user
   Stream<List<Map<String, dynamic>>> getUserRequestsStream(String uid) {
-    // Try with orderBy first, fallback to manual sorting if index doesn't exist
-    return _db
-        .collection('requests')
-        .where('createdBy', isEqualTo: uid)
-        .snapshots()
-        .map((snapshot) {
-      final requests = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-      
-      // Sort manually by createdAt (descending)
-      requests.sort((a, b) {
-        final aTime = a['createdAt'];
-        final bTime = b['createdAt'];
-        if (aTime == null || bTime == null) return 0;
-        
-        // Handle Firestore Timestamp
-        if (aTime is Map && bTime is Map) {
-          final aSec = aTime['_seconds'] as int? ?? 0;
-          final bSec = bTime['_seconds'] as int? ?? 0;
-          return bSec.compareTo(aSec); // Descending
-        }
-        
-        // Handle DateTime
-        if (aTime is DateTime && bTime is DateTime) {
-          return bTime.compareTo(aTime);
-        }
-        
-        return 0;
+    try {
+      return _db
+          .collection('requests')
+          .where('createdBy', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
       });
-      
-      return requests;
-    });
+    } catch (e) {
+      throw Exception('Error fetching user requests: $e');
+    }
   }
 
   /// Get a single request
@@ -454,52 +396,14 @@ class DatabaseService {
       return _db
           .collection('notifications')
           .where('toUid', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
-        final items = snapshot.docs.map((doc) {
-          final data = Map<String, dynamic>.from(doc.data());
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
           data['id'] = doc.id;
           return data;
         }).toList();
-
-        // Sort client-side by createdAt (descending) to avoid index issues
-        items.sort((a, b) {
-          DateTime? aTime;
-          DateTime? bTime;
-
-          final aCreated = a['createdAt'];
-          final bCreated = b['createdAt'];
-
-          if (aCreated is Map && aCreated.containsKey('_seconds')) {
-            aTime = DateTime.fromMillisecondsSinceEpoch((aCreated['_seconds'] as int) * 1000);
-          } else if (aCreated is DateTime) {
-            aTime = aCreated;
-          } else if (aCreated != null) {
-            try {
-              // Timestamp from cloud_firestore
-              final seconds = (aCreated as dynamic).seconds as int?;
-              if (seconds != null) aTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-            } catch (_) {}
-          }
-
-          if (bCreated is Map && bCreated.containsKey('_seconds')) {
-            bTime = DateTime.fromMillisecondsSinceEpoch((bCreated['_seconds'] as int) * 1000);
-          } else if (bCreated is DateTime) {
-            bTime = bCreated;
-          } else if (bCreated != null) {
-            try {
-              final seconds = (bCreated as dynamic).seconds as int?;
-              if (seconds != null) bTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-            } catch (_) {}
-          }
-
-          if (aTime == null && bTime == null) return 0;
-          if (aTime == null) return 1;
-          if (bTime == null) return -1;
-          return bTime.compareTo(aTime);
-        });
-
-        return items;
       });
     } catch (e) {
       throw Exception('Error fetching notifications: $e');

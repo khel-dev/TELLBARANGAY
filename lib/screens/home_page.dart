@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_colors.dart';
 import '../services/auth_service.dart';
-import '../services/database.dart';
 
 class HomePage extends StatelessWidget {
-  HomePage({Key? key}) : super(key: key);
-  final DatabaseService _db = DatabaseService.instance;
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +11,6 @@ class HomePage extends StatelessWidget {
     final displayName = user != null && user['name']!.isNotEmpty
         ? user['name']!
         : 'Citizen';
-    final currentUid = AuthService.instance.currentUid;
 
     return Scaffold(
       body: Container(
@@ -53,7 +49,6 @@ class HomePage extends StatelessWidget {
                             'assets/images/TELLBARANGAY_LOGO.png',
                             width: 40,
                             height: 40,
-                            fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(Icons.home, color: AppColors.primaryOrange, size: 28);
                             },
@@ -86,169 +81,11 @@ class HomePage extends StatelessWidget {
                         ),
                       ),
                       // Bell icon and profile picture on right
-                      StreamBuilder<List<Map<String, dynamic>>>(
-                        stream: currentUid != null ? _db.getUserNotificationsStream(currentUid) : Stream.value([]),
-                        builder: (context, snapshot) {
-                          final unreadCount = snapshot.hasData 
-                              ? snapshot.data!.where((n) => n['read'] == false).length 
-                              : 0;
-                          
-                          return Stack(
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  unreadCount > 0 ? Icons.notifications : Icons.notifications_outlined,
-                                  color: Colors.black87,
-                                ),
-                                onPressed: () {
-                                  if (currentUid == null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Please login first')),
-                                    );
-                                    return;
-                                  }
-                                  
-                                  final notifications = snapshot.data ?? [];
-                                  if (notifications.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('No new notifications')),
-                                    );
-                                  } else {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => Container(
-                                        margin: const EdgeInsets.all(20),
-                                        child: AlertDialog(
-                                          title: Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: const Text(
-                                                  'Notifications',
-                                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () async {
-                                                  // Mark all as read
-                                                  for (final notif in notifications) {
-                                                    if (notif['read'] == false) {
-                                                      await _db.markNotificationAsRead(notif['id'].toString());
-                                                    }
-                                                  }
-                                                  if (context.mounted) Navigator.pop(context);
-                                                },
-                                                child: const Text('Mark all read', style: TextStyle(fontSize: 12)),
-                                              ),
-                                            ],
-                                          ),
-                                          content: ConstrainedBox(
-                                            constraints: BoxConstraints(
-                                              // Limit width and height so dialog doesn't overflow
-                                              maxWidth: MediaQuery.of(context).size.width * 0.9,
-                                              maxHeight: MediaQuery.of(context).size.height * 0.6,
-                                            ),
-                                            child: ListView.builder(
-                                              shrinkWrap: true,
-                                              itemCount: notifications.length,
-                                              itemBuilder: (context, index) {
-                                                final notif = notifications[index];
-                                                final isRead = notif['read'] == true;
-                                                return GestureDetector(
-                                                  onTap: () async {
-                                                    if (!isRead) {
-                                                      await _db.markNotificationAsRead(notif['id'].toString());
-                                                    }
-                                                  },
-                                                  child: Container(
-                                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                                    decoration: BoxDecoration(
-                                                      color: !isRead ? Colors.blue.withOpacity(0.05) : Colors.transparent,
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Row(
-                                                          children: [
-                                                            Expanded(
-                                                              child: Text(
-                                                                notif['message']?.toString() ?? '',
-                                                                style: TextStyle(
-                                                                  fontSize: 13,
-                                                                  fontWeight: !isRead ? FontWeight.w600 : FontWeight.normal,
-                                                                ),
-                                                                softWrap: true,
-                                                                overflow: TextOverflow.visible,
-                                                              ),
-                                                            ),
-                                                            if (!isRead)
-                                                              Padding(
-                                                                padding: const EdgeInsets.only(left: 8.0),
-                                                                child: Container(
-                                                                  width: 8,
-                                                                  height: 8,
-                                                                  decoration: const BoxDecoration(
-                                                                    color: Colors.blue,
-                                                                    shape: BoxShape.circle,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                          ],
-                                                        ),
-                                                        const SizedBox(height: 4),
-                                                        Text(
-                                                          _formatNotifTime(notif['createdAt']),
-                                                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                                                        ),
-                                                        if (index < notifications.length - 1)
-                                                          Divider(color: Colors.grey[300], height: 16),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              child: const Text('Close'),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                              if (unreadCount > 0)
-                                Positioned(
-                                  right: 8,
-                                  top: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 16,
-                                      minHeight: 16,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        unreadCount > 9 ? '9+' : '$unreadCount',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined, color: Colors.black87),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('No new notifications')),
                           );
                         },
                       ),
@@ -358,9 +195,9 @@ class HomePage extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Weather advisory for Davao City',
-                                style: const TextStyle(
+                              const Text(
+                                'Weather advisory for Metro Manila',
+                                style: TextStyle(
                                   color: Colors.black87,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -433,42 +270,6 @@ class HomePage extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatNotifTime(dynamic date) {
-    if (date == null) return 'Just now';
-    try {
-      DateTime dateTime;
-      if (date is DateTime) {
-        dateTime = date;
-      } else if (date is Map && date.containsKey('_seconds')) {
-        // Serialized Firestore Timestamp map
-        final seconds = date['_seconds'] as int?;
-        if (seconds != null) {
-          dateTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-        } else {
-          return 'Just now';
-        }
-      } else if (date is Timestamp) {
-        dateTime = date.toDate();
-      } else if (date is String) {
-        // ISO string fallback
-        dateTime = DateTime.tryParse(date) ?? DateTime.now();
-      } else {
-        return 'Just now';
-      }
-      
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
-
-      if (difference.inMinutes < 1) return 'Just now';
-      if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
-      if (difference.inHours < 24) return '${difference.inHours}h ago';
-      if (difference.inDays < 7) return '${difference.inDays}d ago';
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
-    } catch (e) {
-      return 'Just now';
-    }
   }
 }
 

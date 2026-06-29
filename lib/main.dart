@@ -22,7 +22,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  );
+  ); 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -45,20 +45,20 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const LandingPage(),
-        '/login': (context) => const LoginPage(),
-        '/register': (context) => const RegistrationSelectionPage(),
+        '/': (context) => LandingPage(),
+        '/login': (context) => LoginPage(),
+        '/register': (context) => RegistrationSelectionPage(),
         '/home': (context) => HomePage(),
-        '/reports': (context) => const ReportAnIssuePage(),
-        '/request': (context) => const RequestPage(),
-        '/track': (context) => const TrackPage(),
-        '/announcements': (context) => const AnnouncementsPage(),
-        '/profile': (context) => const ProfilePage(),
-        '/official-home': (context) => const HomeOfficialPage(),
-        '/official-reports': (context) => const ReportsOfficialPage(),
-        '/official-requests': (context) => const RequestsOfficialPage(),
-        '/official-announcements': (context) => const AnnouncementsOfficialPage(),
-        '/official-analytics': (context) => const AnalyticsOfficialPage(),
+        '/reports': (context) => ReportAnIssuePage(),
+        '/request': (context) => RequestPage(),
+        '/track': (context) => TrackPage(),
+        '/announcements': (context) => AnnouncementsPage(),
+        '/profile': (context) => ProfilePage(),
+        '/official-home': (context) => HomeOfficialPage(),
+        '/official-reports': (context) => ReportsOfficialPage(),
+        '/official-requests': (context) => RequestsOfficialPage(),
+        '/official-announcements': (context) => AnnouncementsOfficialPage(),
+        '/official-analytics': (context) => AnalyticsOfficialPage(),
       },
     );
   }

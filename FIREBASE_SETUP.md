@@ -135,3 +135,4 @@ Once registration works:
 - **Indexes**: If you get index errors, Firebase will provide a link to create the required indexes automatically.
 
 
+
